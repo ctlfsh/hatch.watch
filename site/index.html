@@ -653,15 +653,14 @@ function buildAnnotations(labels, events) {
       borderDash: [5, 4],
       label: {
         display: true,
-        content: evt.label,
+        content: '①',
         position: 'end',
-        backgroundColor: '#fffdf5',
-        color: '#b07a00',
-        font: { size: 10, weight: '600' },
-        borderColor: '#e6a817',
-        borderWidth: 1,
-        borderRadius: 3,
-        padding: 4,
+        yAdjust: -10,
+        backgroundColor: 'transparent',
+        color: '#e6a817',
+        font: { size: 13, weight: '700' },
+        borderWidth: 0,
+        padding: 0,
       },
     };
   });
@@ -812,15 +811,17 @@ function switchChart(mode) {
 function renderNotableCallouts(events) {
   const container = document.getElementById('notable-callouts');
   if (!events || !events.length) return;
-  container.innerHTML = events.map(evt => `
+  container.innerHTML = events.map((evt, i) => {
+    const marker = ['①','②','③'][i] || (i+1);
+    return `
     <div class="notable-callout">
-      <strong>Notable finding</strong>
+      <strong>${marker} ${escHtml(evt.label)}</strong>
       ${escHtml(evt.callout)}
       <a href="#cards" onclick="preFilterCards('${escHtml(evt.filter_date)}')" style="margin-left:0.5rem">
         View affected sites →
       </a>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function preFilterCards(dateLabel) {
