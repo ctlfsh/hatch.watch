@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>US Government Website Sentiment Monitor</title>
+  <title>hatch.watch — US Government Website Partisan Monitor</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19,21 +20,24 @@
     header {
       background: #1a1a1a;
       color: #fff;
-      padding: 2.5rem 2rem;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: baseline;
+      gap: 1.25rem;
+      flex-wrap: wrap;
     }
 
     header h1 {
-      font-size: 1.6rem;
+      font-size: 1.1rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      max-width: 800px;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
     }
 
     header p {
-      margin-top: 0.5rem;
-      color: #aaa;
-      font-size: 0.9rem;
-      max-width: 700px;
+      color: #888;
+      font-size: 0.85rem;
+      margin: 0;
     }
 
     .container {
@@ -42,12 +46,24 @@
       padding: 2rem;
     }
 
-    /* Summary stats */
+    /* ── KPI groups ── */
+    .stats-group {
+      margin-bottom: 2.5rem;
+    }
+
+    .stats-group-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      margin-bottom: 0.6rem;
+    }
+
     .stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 1rem;
-      margin-bottom: 2.5rem;
     }
 
     .stat {
@@ -75,7 +91,13 @@
       letter-spacing: 0.05em;
     }
 
-    /* Sections */
+    .stat-footnote {
+      font-size: 0.72rem;
+      color: #aaa;
+      margin-top: 0.3rem;
+    }
+
+    /* ── Sections ── */
     section {
       background: #fff;
       border: 1px solid #e0e0e0;
@@ -95,13 +117,74 @@
       border-bottom: 1px solid #eee;
     }
 
-    /* Chart */
+    /* ── Chart toggle ── */
+    .chart-toggle {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .chart-toggle button {
+      padding: 0.35rem 1rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+    }
+
+    .chart-toggle button.active {
+      background: #1a1a1a;
+      color: #fff;
+      border-color: #1a1a1a;
+    }
+
     .chart-wrap {
       position: relative;
       height: 320px;
     }
 
-    /* Cards */
+    .chart-note {
+      font-size: 0.75rem;
+      color: #999;
+      margin-top: 0.6rem;
+      font-style: italic;
+    }
+
+    /* ── Notable event callout ── */
+    .notable-callout {
+      margin-top: 1.25rem;
+      border: 1px solid #e6a817;
+      border-left: 4px solid #e6a817;
+      border-radius: 4px;
+      background: #fffdf5;
+      padding: 0.85rem 1rem;
+      font-size: 0.85rem;
+      color: #444;
+      line-height: 1.5;
+    }
+
+    .notable-callout strong {
+      color: #b07a00;
+      display: block;
+      margin-bottom: 0.3rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .notable-callout a {
+      color: #b07a00;
+      font-weight: 600;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .notable-callout a:hover { text-decoration: underline; }
+
+    /* ── Cards ── */
     .cards-controls {
       display: flex;
       gap: 0.75rem;
@@ -166,6 +249,14 @@
       margin-bottom: 0.6rem;
     }
 
+    .card-visits {
+      font-size: 0.75rem;
+      color: #c0392b;
+      margin-top: 0.2rem;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
     .card-rationale {
       font-size: 0.85rem;
       color: #444;
@@ -186,7 +277,7 @@
     }
 
     .card-quote::before {
-      content: '"';
+      content: '\201C';
       color: #c0392b;
       font-style: normal;
       font-weight: 700;
@@ -194,13 +285,12 @@
     }
 
     .card-quote::after {
-      content: '"';
+      content: '\201D';
       color: #c0392b;
       font-style: normal;
       font-weight: 700;
       margin-left: 0.1rem;
     }
-
 
     .load-more {
       display: block;
@@ -217,7 +307,7 @@
 
     .load-more:hover { background: #f0f0f0; }
 
-    /* Flips table */
+    /* ── Flips table ── */
     .flips-table {
       width: 100%;
       border-collapse: collapse;
@@ -265,12 +355,22 @@
 
     .arrow { color: #999; margin: 0 0.3rem; }
 
-    /* Methodology */
+    /* ── Methodology ── */
     .methodology {
       font-size: 0.85rem;
       color: #555;
       line-height: 1.6;
     }
+
+    .methodology h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #333;
+      margin-top: 1.25rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .methodology h3:first-child { margin-top: 0; }
 
     .methodology p { margin-bottom: 0.75rem; }
     .methodology p:last-child { margin-bottom: 0; }
@@ -286,21 +386,36 @@
 <body>
 
 <header>
-  <h1>US Government Website Sentiment Monitor</h1>
-  <p>Tracking partisan content and potential Hatch Act violations on federal government websites over time.</p>
+  <h1>hatch.watch</h1>
+  <p>Tracking partisan content on US federal government websites over time</p>
 </header>
 
 <div class="container">
 
-  <!-- Summary stats -->
-  <div class="stats" id="stats"></div>
+  <!-- Summary stats: Sites group -->
+  <div class="stats-group">
+    <div class="stats-group-label">Sites</div>
+    <div class="stats" id="stats-sites"></div>
+  </div>
+
+  <!-- Summary stats: Reach group -->
+  <div class="stats-group" id="stats-reach-group" style="display:none">
+    <div class="stats-group-label">Reach (daily visits to partisan sites)</div>
+    <div class="stats" id="stats-reach"></div>
+  </div>
 
   <!-- Time series chart -->
   <section>
     <h2>Partisan detections over time</h2>
+    <div class="chart-toggle">
+      <button id="toggle-sites" class="active" onclick="switchChart('sites')">Sites</button>
+      <button id="toggle-traffic" onclick="switchChart('traffic')">Traffic %</button>
+    </div>
     <div class="chart-wrap">
       <canvas id="chart"></canvas>
     </div>
+    <p class="chart-note" id="chart-note"></p>
+    <div id="notable-callouts"></div>
   </section>
 
   <!-- Partisan cards -->
@@ -314,6 +429,10 @@
         <option value="agency">Agency sites only</option>
         <option value="congressional">Congressional sites</option>
         <option value="archive">Historical archives</option>
+      </select>
+      <select id="sort-filter">
+        <option value="traffic">Sort: by traffic</option>
+        <option value="newest">Sort: newest first</option>
       </select>
       <span id="cards-count"></span>
     </div>
@@ -341,10 +460,11 @@
   <section>
     <h2>Methodology</h2>
     <div class="methodology">
+      <h3>Site classification</h3>
       <p>
         Homepages of ~1,300 US federal government (.gov) websites were scraped at multiple points
-        between October 2025 and February 2026 using a Playwright-based scraper with stealth
-        settings to retrieve rendered page content.
+        between October 2025 and February 2026 using a Playwright-based scraper to retrieve rendered
+        page content.
       </p>
       <p>
         Each page's text (up to 4,000 characters) was classified using
@@ -359,9 +479,50 @@
         departments and agencies), <strong>congressional sites</strong> (official caucus and
         leadership pages, which are expected to reflect partisan positions), and
         <strong>historical archives</strong> (frozen sites from prior administrations).
-        Headline statistics reflect agency sites only. All categories are available in the
+        Headline statistics and charts reflect agency sites only. All categories appear in the
         partisan detections feed above.
       </p>
+
+      <h3>Traffic data</h3>
+      <p>
+        Visit counts come from the <a href="https://analytics.usa.gov/" target="_blank" rel="noopener">Digital Analytics Program (DAP)</a>,
+        a GSA-run platform that collects traffic data from participating federal websites.
+        In the DAP, a <strong>"visit" is a session</strong> — a continuous period of interaction that begins
+        when a user opens a page and ends when they close it or go idle for 30 minutes. Visit counts
+        are not pageviews and not unique visitors; one person can generate multiple visits in a day.
+        All traffic figures are reported as <strong>daily visits (sessions)</strong>.
+      </p>
+      <p>
+        Traffic is matched on an <strong>exact apex domain basis only</strong> — we use the visit count
+        for <code>irs.gov</code> directly, and do not aggregate subdomain traffic (e.g.
+        <code>apps.irs.gov</code>). Visitors to those subdomains never saw the homepage content we
+        classified; including them would misrepresent the reach of partisan content.
+      </p>
+      <p>
+        Of the 1,336 sites tracked, <strong>898 have no presence in DAP at all</strong> and an additional
+        54 appear only via subdomains. We do not know whether absent sites are low-traffic or simply
+        not enrolled in DAP analytics. These sites are shown as "no data" — not zero — in all traffic figures.
+        Visit counts reflect only the ~360–390 domains with confirmed DAP data per snapshot.
+      </p>
+      <p>
+        <strong>Interpreting the Traffic % chart:</strong> Reach percentage is calculated as partisan site visits
+        divided by (partisan + neutral) site visits for sites with DAP data. Unknown/blocked sites are excluded
+        from this calculation — they have no content and no measurable traffic. This is intentional: the Sites
+        chart shows 3 datasets (partisan, neutral, unknown) while the Traffic % chart shows a single line,
+        because unknown sites have no visit data to plot.
+      </p>
+      <p>
+        <strong>Day-of-week effects:</strong> Government website traffic is heavily weekday-weighted. Three
+        snapshots fall on Sundays (Oct 12, Feb 1, Feb 8) and show lower total visits than weekday snapshots.
+        The Traffic % view normalizes for this — percentages are directly comparable across snapshots
+        regardless of overall traffic volume.
+      </p>
+      <p>
+        The coverage count shown in reach KPI footnotes reflects the exact number of tracked sites with
+        DAP data for the latest snapshot.
+      </p>
+
+      <h3>Data</h3>
       <p>
         Raw data is available for download. This project is independent and not affiliated with
         any government agency.
@@ -380,19 +541,37 @@ const PAGE_SIZE = 24;
 let allCards = [];
 let filtered = [];
 let shown = 0;
+let chartInstance = null;
+let chartMode = 'sites';
+let timeSeriesData = null;
+let notableEvents = [];
 
 async function init() {
   const data = await fetch('data.json').then(r => r.json());
+  timeSeriesData = data.time_series;
+  notableEvents = data.notable_events || [];
+
   renderStats(data.summary);
-  renderChart(data.time_series);
-  renderCards(data.partisan_cards, data.time_series.labels);
+  renderChart(data.time_series, 'sites');
+  renderNotableCallouts(notableEvents);
+  renderCards(data.partisan_cards);
   renderFlips(data.flips);
 
-  // Methodology model name
   const model = data.partisan_cards[0]?.model || '';
   if (model) document.getElementById('model-name').textContent = model;
 
   document.getElementById('last-updated').textContent = data.summary.latest_date;
+}
+
+function fmtVisits(n) {
+  if (!n) return '0';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return Math.round(n / 1e3) + 'K';
+  return n.toLocaleString();
+}
+
+function fmtVisitsFull(n) {
+  return '~' + n.toLocaleString();
 }
 
 function renderStats(s) {
@@ -400,118 +579,361 @@ function renderStats(s) {
     ? ((s.latest_partisan / (s.latest_partisan + s.latest_neutral + s.latest_unknown)) * 100).toFixed(1)
     : '0';
 
-  const items = [
+  // Sites group
+  const siteItems = [
     { value: s.latest_partisan, label: `Partisan sites (${s.latest_date})`, cls: 'partisan' },
-    { value: pct + '%', label: 'Of sites with content', cls: 'partisan' },
-    { value: s.total_sites.toLocaleString(), label: 'Unique sites tracked', cls: '' },
-    { value: s.snapshots, label: 'Snapshots taken', cls: '' },
-    { value: s.total_records.toLocaleString(), label: 'Total records', cls: '' },
+    { value: pct + '%',         label: 'Of sites with content',              cls: 'partisan' },
+    { value: s.total_sites.toLocaleString(), label: 'Unique sites tracked',  cls: '' },
+    { value: s.snapshots,       label: 'Snapshots taken',                   cls: '' },
+    { value: s.total_records.toLocaleString(), label: 'Total records',       cls: '' },
   ];
 
-  document.getElementById('stats').innerHTML = items.map(i => `
+  document.getElementById('stats-sites').innerHTML = siteItems.map(i => `
     <div class="stat">
       <div class="stat-value ${i.cls}">${i.value}</div>
       <div class="stat-label">${i.label}</div>
     </div>
   `).join('');
+
+  // Reach group — only if traffic data present
+  if (s.peak_partisan_visits) {
+    document.getElementById('stats-reach-group').style.display = '';
+    const coverage = s.latest_traffic_coverage || 0;
+    const latestFootnote = `${s.latest_date} · based on ${coverage} sites with DAP data`;
+    const peakFootnote = `${s.peak_partisan_date} · based on ${coverage} sites with DAP data`;
+
+    const reachItems = [
+      {
+        value: fmtVisits(s.peak_partisan_visits),
+        label: 'Peak daily visits',
+        cls: 'partisan',
+        footnote: peakFootnote,
+      },
+      {
+        value: s.peak_partisan_reach_pct + '%',
+        label: 'Of tracked traffic at peak',
+        cls: 'partisan',
+        footnote: s.peak_partisan_date,
+      },
+      {
+        value: fmtVisits(s.latest_partisan_visits),
+        label: 'Current daily visits',
+        cls: 'partisan',
+        footnote: latestFootnote,
+      },
+      {
+        value: s.latest_partisan_reach_pct + '%',
+        label: 'Of tracked traffic now',
+        cls: 'partisan',
+        footnote: s.latest_date,
+      },
+    ];
+
+    document.getElementById('stats-reach').innerHTML = reachItems.map(i => `
+      <div class="stat">
+        <div class="stat-value ${i.cls}">${i.value}</div>
+        <div class="stat-label">${i.label}</div>
+        <div class="stat-footnote">${i.footnote}</div>
+      </div>
+    `).join('');
+  }
 }
 
-function renderChart(ts) {
-  const ctx = document.getElementById('chart').getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: ts.labels,
-      datasets: [
-        {
-          label: 'Partisan',
-          data: ts.partisan,
-          borderColor: '#c0392b',
-          backgroundColor: 'rgba(192,57,43,0.08)',
-          borderWidth: 2,
-          pointRadius: 4,
-          tension: 0.3,
-          fill: true,
-        },
-        {
-          label: 'Neutral',
-          data: ts.neutral,
-          borderColor: '#2c7a4b',
-          backgroundColor: 'rgba(44,122,75,0.06)',
-          borderWidth: 2,
-          pointRadius: 4,
-          tension: 0.3,
-          fill: true,
-        },
-        {
-          label: 'Unknown / blocked',
-          data: ts.unknown,
-          borderColor: '#aaa',
-          backgroundColor: 'rgba(170,170,170,0.06)',
-          borderWidth: 1.5,
-          pointRadius: 3,
-          tension: 0.3,
-          borderDash: [4, 3],
-          fill: true,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'top', labels: { font: { size: 12 }, boxWidth: 14 } },
-        tooltip: { padding: 10 },
+function buildAnnotations(labels, events) {
+  const annotations = {};
+  events.forEach((evt, i) => {
+    const idx = labels.indexOf(evt.chart_position);
+    if (idx === -1) return;
+    annotations['event' + i] = {
+      type: 'line',
+      xMin: idx,
+      xMax: idx,
+      borderColor: '#e6a817',
+      borderWidth: 2,
+      borderDash: [5, 4],
+      label: {
+        display: true,
+        content: evt.label,
+        position: 'end',
+        backgroundColor: '#fffdf5',
+        color: '#b07a00',
+        font: { size: 10, weight: '600' },
+        borderColor: '#e6a817',
+        borderWidth: 1,
+        borderRadius: 3,
+        padding: 4,
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: '#f0f0f0' },
-          ticks: { font: { size: 11 } },
-        },
-        x: {
-          grid: { display: false },
-          ticks: { font: { size: 11 } },
-        },
-      },
-    },
+    };
   });
+  return annotations;
 }
 
-function renderCards(cards, dateLabels) {
+function renderChart(ts, mode) {
+  const ctx = document.getElementById('chart').getContext('2d');
+
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
+
+  const annotations = buildAnnotations(ts.labels, notableEvents);
+
+  if (mode === 'sites') {
+    document.getElementById('chart-note').textContent = '';
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ts.labels,
+        datasets: [
+          {
+            label: 'Partisan',
+            data: ts.agency_partisan,
+            borderColor: '#c0392b',
+            backgroundColor: 'rgba(192,57,43,0.08)',
+            borderWidth: 2,
+            pointRadius: 4,
+            tension: 0.3,
+            fill: true,
+          },
+          {
+            label: 'Neutral',
+            data: ts.agency_neutral,
+            borderColor: '#2c7a4b',
+            backgroundColor: 'rgba(44,122,75,0.06)',
+            borderWidth: 2,
+            pointRadius: 4,
+            tension: 0.3,
+            fill: true,
+          },
+          {
+            label: 'Unknown / blocked',
+            data: ts.agency_unknown,
+            borderColor: '#aaa',
+            backgroundColor: 'rgba(170,170,170,0.06)',
+            borderWidth: 1.5,
+            pointRadius: 3,
+            tension: 0.3,
+            borderDash: [4, 3],
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12 }, boxWidth: 14 } },
+          tooltip: { padding: 10 },
+          annotation: { annotations },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Sites', font: { size: 11 }, color: '#888' },
+            grid: { color: '#f0f0f0' },
+            ticks: { font: { size: 11 } },
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } },
+          },
+        },
+      },
+    });
+  } else {
+    // Traffic % view
+    document.getElementById('chart-note').textContent =
+      'Unknown/blocked sites are excluded from visit data — they returned no content and have no measurable traffic.';
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ts.labels,
+        datasets: [
+          {
+            label: 'Partisan reach %',
+            data: ts.agency_partisan_reach_pct,
+            borderColor: '#c0392b',
+            backgroundColor: 'rgba(192,57,43,0.1)',
+            borderWidth: 2.5,
+            pointRadius: 5,
+            tension: 0.3,
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 12 }, boxWidth: 14 } },
+          tooltip: {
+            padding: 10,
+            callbacks: {
+              label: ctx => ` ${ctx.parsed.y}% of tracked traffic`,
+            },
+          },
+          annotation: { annotations },
+        },
+        scales: {
+          y: {
+            min: 0,
+            max: 10,
+            title: { display: true, text: '% of tracked traffic', font: { size: 11 }, color: '#888' },
+            grid: { color: '#f0f0f0' },
+            ticks: {
+              font: { size: 11 },
+              callback: v => v + '%',
+            },
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } },
+          },
+        },
+      },
+    });
+  }
+}
+
+function switchChart(mode) {
+  chartMode = mode;
+  document.getElementById('toggle-sites').classList.toggle('active', mode === 'sites');
+  document.getElementById('toggle-traffic').classList.toggle('active', mode === 'traffic');
+
+  // Traffic % only available if data present
+  if (mode === 'traffic' && !timeSeriesData.agency_partisan_reach_pct) {
+    return;
+  }
+  renderChart(timeSeriesData, mode);
+}
+
+function renderNotableCallouts(events) {
+  const container = document.getElementById('notable-callouts');
+  if (!events || !events.length) return;
+  container.innerHTML = events.map(evt => `
+    <div class="notable-callout">
+      <strong>Notable finding</strong>
+      ${escHtml(evt.callout)}
+      <a href="#cards" onclick="preFilterCards('${escHtml(evt.filter_date)}')" style="margin-left:0.5rem">
+        View affected sites →
+      </a>
+    </div>
+  `).join('');
+}
+
+function preFilterCards(dateLabel) {
+  // Find the raw date key that matches this label
+  const card = allCards.find(c => {
+    const snap = c.date;
+    // snap is like "2025-11-13-am", label is "Nov 13, 2025 AM"
+    // The date filter uses the raw snap key as option value
+    return snap === dateLabel || formatSnapLabel(snap) === dateLabel;
+  });
+  if (!card) return;
+
+  // Set date filter to the raw snap key
+  const sel = document.getElementById('date-filter');
+  sel.value = card.date;
+  // Also reset category to all so partisan cards from all categories show
+  document.getElementById('category-filter').value = '';
+  applyFilters();
+}
+
+// Maps a raw snapshot key like "2025-11-13-am" to its display label
+// by scanning the date filter options
+function formatSnapLabel(snapKey) {
+  const sel = document.getElementById('date-filter');
+  for (const opt of sel.options) {
+    if (opt.value === snapKey) return opt.text;
+  }
+  return snapKey;
+}
+
+function renderCards(cards) {
   allCards = cards;
 
-  // Populate date filter
+  // Populate date filter using raw snap key as value, display label as text
   const sel = document.getElementById('date-filter');
-  const dates = [...new Set(cards.map(c => c.date))].sort().reverse();
-  dates.forEach(d => {
-    const label = dateLabels.find(l => l.includes(d.slice(5, 7))) || d;
-    sel.innerHTML += `<option value="${d}">${d}</option>`;
+  const seenDates = new Set();
+  cards.forEach(c => {
+    if (!seenDates.has(c.date)) {
+      seenDates.add(c.date);
+    }
+  });
+  // Sort descending
+  [...seenDates].sort().reverse().forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = snapLabel(d);
+    sel.appendChild(opt);
   });
 
   sel.addEventListener('change', applyFilters);
   document.getElementById('search').addEventListener('input', applyFilters);
   document.getElementById('category-filter').addEventListener('change', applyFilters);
+  document.getElementById('sort-filter').addEventListener('change', applyFilters);
   document.getElementById('load-more').addEventListener('click', showMore);
 
-  // Default to agency only — most relevant for the headline story
   document.getElementById('category-filter').value = 'agency';
   applyFilters();
+}
+
+// Convert raw snap key to human label (matches SNAPSHOT_LABELS in build_site.py)
+function snapLabel(key) {
+  const map = {
+    '2025-10-12':    'Oct 12, 2025',
+    '2025-11-06':    'Nov 6, 2025',
+    '2025-11-13-am': 'Nov 13, 2025 AM',
+    '2025-11-13-pm': 'Nov 13, 2025 PM',
+    '2026-01-29':    'Jan 29, 2026',
+    '2026-01-30':    'Jan 30, 2026',
+    '2026-01-30-pm': 'Jan 30, 2026 PM',
+    '2026-01-31-am': 'Jan 31, 2026 AM',
+    '2026-02-01':    'Feb 1, 2026',
+    '2026-02-02':    'Feb 2, 2026',
+    '2026-02-03':    'Feb 3, 2026',
+    '2026-02-04':    'Feb 4, 2026',
+    '2026-02-08':    'Feb 8, 2026',
+  };
+  return map[key] || key;
 }
 
 function applyFilters() {
   const query    = document.getElementById('search').value.toLowerCase();
   const date     = document.getElementById('date-filter').value;
   const category = document.getElementById('category-filter').value;
-  filtered = allCards.filter(c => {
+  const sortMode = document.getElementById('sort-filter').value;
+
+  let f = allCards.filter(c => {
     const matchDate     = !date     || c.date === date;
     const matchCategory = !category || c.category === category;
     const matchText     = !query    ||
       c.url.toLowerCase().includes(query) ||
-      c.rationale.toLowerCase().includes(query);
+      (c.rationale || '').toLowerCase().includes(query);
     return matchDate && matchCategory && matchText;
   });
+
+  if (sortMode === 'traffic') {
+    if (date) {
+      // Within a specific date: sort by visits for that snapshot, no-data to bottom
+      f.sort((a, b) => (b.visits || 0) - (a.visits || 0));
+    } else {
+      // No date filter: sort by highest visit count across all snapshots, no-data to bottom
+      // Build max-visits-per-url map
+      const maxVisits = {};
+      allCards.forEach(c => {
+        if (c.visits) maxVisits[c.url] = Math.max(maxVisits[c.url] || 0, c.visits);
+      });
+      f.sort((a, b) => (maxVisits[b.url] || 0) - (maxVisits[a.url] || 0));
+    }
+  } else {
+    // Newest first
+    f.sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  filtered = f;
   shown = 0;
   document.getElementById('cards').innerHTML = '';
   showMore();
@@ -525,18 +947,22 @@ function showMore() {
   batch.forEach(c => {
     const div = document.createElement('div');
     div.className = 'card';
-    const categoryLabel = {agency: '', congressional: 'Congressional', archive: 'Archive'}[c.category] || '';
+    const categoryLabel = { congressional: 'Congressional', archive: 'Archive' }[c.category] || '';
     const categoryBadge = categoryLabel
       ? `<span class="badge" style="background:#f0f0f0;color:#666;margin-left:0.4rem">${categoryLabel}</span>`
       : '';
     const quoteHtml = c.partisan_quote
       ? `<div class="card-quote">${escHtml(c.partisan_quote)}</div>`
       : '';
+    const visitsHtml = c.visits
+      ? `<div class="card-visits">${fmtVisitsFull(c.visits)} daily visits</div>`
+      : '';
     div.innerHTML = `
       <div class="card-url">
         <a href="${c.url}" target="_blank" rel="noopener">${c.url}</a>${categoryBadge}
       </div>
-      <div class="card-meta">${c.date}</div>
+      <div class="card-meta">${snapLabel(c.date)}</div>
+      ${visitsHtml}
       <div class="card-rationale">${escHtml(c.rationale)}</div>
       ${quoteHtml}
     `;
@@ -568,6 +994,7 @@ function renderFlips(flips) {
 }
 
 function escHtml(s) {
+  if (!s) return '';
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
