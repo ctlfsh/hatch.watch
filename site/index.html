@@ -468,7 +468,7 @@
       </p>
       <p>
         Each page's text (up to 4,000 characters) was classified using
-        <strong id="model-name">an LLM</strong> via the OpenRouter API.
+        <strong id="model-name">an LLM</strong>.
         Sites were labeled <strong>partisan</strong> if the text contained explicit partisan language:
         named party attacks, political blame statements, or campaign-style rhetoric.
         Factual policy descriptions and neutral government content were labeled <strong>neutral</strong>.
@@ -495,8 +495,8 @@
       <p>
         Traffic is matched on an <strong>exact apex domain basis only</strong> — we use the visit count
         for <code>irs.gov</code> directly, and do not aggregate subdomain traffic (e.g.
-        <code>apps.irs.gov</code>). Visitors to those subdomains never saw the homepage content we
-        classified; including them would misrepresent the reach of partisan content.
+        <code>apps.irs.gov</code>). Visitors to those subdomains probably never saw the homepage content we
+        classified; including them would potentially misrepresent the reach of partisan content.
       </p>
       <p>
         Of the 1,336 sites tracked, <strong>898 have no presence in DAP at all</strong> and an additional
