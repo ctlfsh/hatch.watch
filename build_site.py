@@ -9,9 +9,11 @@ Generates:
 Usage:
     python build_site.py
     python build_site.py --input master_scrapes_classified.jsonl --out site/
+    python build_site.py --input master_scrapes_gemma4_31b.jsonl --traffic dap_traffic.json
 """
 import argparse
 import json
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -54,9 +56,24 @@ SNAPSHOT_LABELS = {
     "2026-02-08":    "Feb 8, 2026",
 }
 
+# Notable events — drives chart annotations and callout panels in index.html
+NOTABLE_EVENTS = [
+    {
+        "label": "Shutdown ended Nov 12, 2025",
+        "chart_position": "Nov 13, 2025 AM",
+        "callout": "46 agency homepages removed partisan content within hours of each other — the day after the government shutdown ended. Nearly all were Department of Justice and HHS sites.",
+        "filter_date": "Nov 13, 2025 AM",
+    }
+]
+
 
 def canonical_date(raw_date: str, source_file: str) -> str:
     return SOURCE_FILE_SNAPSHOT.get(source_file, raw_date[:10])
+
+
+def dap_fetch_date(snapshot: str) -> str:
+    """Strip -am/-pm/-pm suffix to get the calendar date for DAP lookup."""
+    return re.sub(r"-(am|pm)$", "", snapshot)
 
 
 # ---------------------------------------------------------------------------
@@ -96,16 +113,33 @@ def site_category(url: str) -> str:
     return "agency"
 
 
+def apex_domain(url: str) -> str:
+    """Extract apex domain from url, e.g. 'https://irs.gov' -> 'irs.gov'."""
+    m = re.match(r"https?://([^/]+)", url)
+    return m.group(1) if m else ""
+
+
 # ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
 
-def build(input_path: Path, out_dir: Path):
+def build(input_path: Path, out_dir: Path, traffic_path: Path = None):
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load traffic cache if provided
+    traffic = None
+    if traffic_path and traffic_path.exists():
+        with traffic_path.open(encoding="utf-8") as f:
+            traffic = json.load(f)
+        print(f"Traffic data loaded: {len(traffic['dates'])} dates cached")
 
     # Separate time series per category
     by_date         = defaultdict(lambda: {"partisan": 0, "neutral": 0, "unknown": 0})
     by_date_agency  = defaultdict(lambda: {"partisan": 0, "neutral": 0, "unknown": 0})
+
+    # Traffic counters — agency-only, partisan and neutral only (unknown excluded)
+    by_date_agency_traffic = defaultdict(lambda: {"partisan": 0, "neutral": 0})
+    traffic_coverage = defaultdict(int)  # snapshot -> count of domains with visits > 0
 
     site_history = defaultdict(dict)   # url -> {date -> label}
     partisan_cards = []
@@ -130,6 +164,25 @@ def build(input_path: Path, out_dir: Path):
 
             site_history[url][date] = label
 
+            # Traffic lookup — agency-only for chart/KPI series
+            visits = 0
+            if traffic and label in ("partisan", "neutral") and category == "agency":
+                fetch_date = dap_fetch_date(date)
+                day_data = traffic.get("dates", {}).get(fetch_date, {})
+                domain = apex_domain(url)
+                visits = day_data.get("domains", {}).get(domain, 0)
+                if visits > 0:
+                    by_date_agency_traffic[date][label] += visits
+                    traffic_coverage[date] += 1
+
+            # Card visits — all categories, omit field if no data
+            card_visits = 0
+            if traffic and label == "partisan":
+                fetch_date = dap_fetch_date(date)
+                day_data = traffic.get("dates", {}).get(fetch_date, {})
+                domain = apex_domain(url)
+                card_visits = day_data.get("domains", {}).get(domain, 0)
+
             if label == "partisan":
                 card = {
                     "url":      url,
@@ -142,6 +195,8 @@ def build(input_path: Path, out_dir: Path):
                 quote = snt.get("partisan_quote", "").strip()
                 if quote:
                     card["partisan_quote"] = quote
+                if card_visits > 0:
+                    card["visits"] = card_visits
                 partisan_cards.append(card)
 
     # Time series — only known snapshots, sorted
@@ -156,6 +211,20 @@ def build(input_path: Path, out_dir: Path):
         "agency_neutral":  [by_date_agency[s]["neutral"]  for s in snapshots],
         "agency_unknown":  [by_date_agency[s]["unknown"]  for s in snapshots],
     }
+
+    # Traffic series — only populated if traffic data provided
+    if traffic:
+        agency_partisan_visits = [by_date_agency_traffic[s]["partisan"] for s in snapshots]
+        agency_neutral_visits  = [by_date_agency_traffic[s]["neutral"]  for s in snapshots]
+        agency_total_visits    = [p + n for p, n in zip(agency_partisan_visits, agency_neutral_visits)]
+        agency_partisan_reach_pct = [
+            round(p / t * 100, 1) if t > 0 else 0.0
+            for p, t in zip(agency_partisan_visits, agency_total_visits)
+        ]
+        time_series["agency_partisan_visits"]    = agency_partisan_visits
+        time_series["agency_neutral_visits"]     = agency_neutral_visits
+        time_series["agency_total_visits"]       = agency_total_visits
+        time_series["agency_partisan_reach_pct"] = agency_partisan_reach_pct
 
     # Summary stats — agency sites only for headline numbers
     latest = snapshots[-1] if snapshots else None
@@ -173,6 +242,21 @@ def build(input_path: Path, out_dir: Path):
         "congressional_count": len(CONGRESSIONAL_SITES),
         "archive_count":       len(ARCHIVE_SITES),
     }
+
+    # Traffic summary fields
+    if traffic and latest:
+        reach_pct_list = time_series.get("agency_partisan_reach_pct", [])
+        # Peak = snapshot with highest reach % (not raw visits — normalizes day-of-week)
+        peak_idx = reach_pct_list.index(max(reach_pct_list)) if reach_pct_list else 0
+        peak_snap = snapshots[peak_idx]
+        summary["latest_partisan_visits"]  = by_date_agency_traffic[latest]["partisan"]
+        summary["latest_total_visits"]     = (by_date_agency_traffic[latest]["partisan"] +
+                                               by_date_agency_traffic[latest]["neutral"])
+        summary["latest_partisan_reach_pct"] = reach_pct_list[-1] if reach_pct_list else 0.0
+        summary["peak_partisan_visits"]    = by_date_agency_traffic[peak_snap]["partisan"]
+        summary["peak_partisan_reach_pct"] = reach_pct_list[peak_idx]
+        summary["peak_partisan_date"]      = SNAPSHOT_LABELS.get(peak_snap, peak_snap)
+        summary["latest_traffic_coverage"] = traffic_coverage[latest]
 
     # Flip tracker — agency sites only, exclude archive
     flips = []
@@ -193,14 +277,16 @@ def build(input_path: Path, out_dir: Path):
                 "to_date":    SNAPSHOT_LABELS.get(dated[-1][0], dated[-1][0]),
             })
 
-    # Sort partisan cards newest first
-    partisan_cards.sort(key=lambda x: x["date"], reverse=True)
+    # Sort partisan cards by visits descending (no-data to bottom), then by date descending
+    partisan_cards.sort(key=lambda x: (-x.get("visits", 0), x["date"]), reverse=False)
+    partisan_cards.sort(key=lambda x: (x.get("visits", -1) == -1, -x.get("visits", 0)))
 
     data = {
         "summary":        summary,
         "time_series":    time_series,
         "partisan_cards": partisan_cards,
         "flips":          flips,
+        "notable_events": NOTABLE_EVENTS,
     }
 
     data_path = out_dir / "data.json"
@@ -217,16 +303,22 @@ def build(input_path: Path, out_dir: Path):
     print(f"    {len(congress_partisan)} congressional")
     print(f"    {len(archive_partisan)} archive")
     print(f"  {len(flips)} label flips (agency only)")
+    if traffic:
+        print(f"  Traffic data: {summary.get('latest_traffic_coverage', 0)} sites with data in latest snapshot")
+        print(f"  Peak reach: {summary.get('peak_partisan_reach_pct', 0)}% on {summary.get('peak_partisan_date', '')}")
+        print(f"  Latest reach: {summary.get('latest_partisan_reach_pct', 0)}% on {summary.get('latest_date', '')}")
 
 
 # ---------------------------------------------------------------------------
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--input", default="master_scrapes_classified.jsonl")
-    p.add_argument("--out",   default="site")
+    p.add_argument("--input",   default="master_scrapes_classified.jsonl")
+    p.add_argument("--out",     default="site")
+    p.add_argument("--traffic", default=None, help="Path to dap_traffic.json cache")
     args = p.parse_args()
-    build(Path(args.input), Path(args.out))
+    traffic_path = Path(args.traffic) if args.traffic else None
+    build(Path(args.input), Path(args.out), traffic_path)
 
 
 if __name__ == "__main__":
