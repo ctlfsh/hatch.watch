@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>US Government Website Sentiment Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      color: #1a1a1a;
+      background: #f8f8f6;
+    }
+
+    header {
+      background: #1a1a1a;
+      color: #fff;
+      padding: 2.5rem 2rem;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      max-width: 800px;
+    }
+
+    header p {
+      margin-top: 0.5rem;
+      color: #aaa;
+      font-size: 0.9rem;
+      max-width: 700px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Summary stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .stat {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .stat-value.partisan { color: #c0392b; }
+    .stat-value.neutral  { color: #2c7a4b; }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Sections */
+    section {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 1.75rem;
+      margin-bottom: 2rem;
+    }
+
+    section h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #444;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    /* Chart */
+    .chart-wrap {
+      position: relative;
+      height: 320px;
+    }
+
+    /* Cards */
+    .cards-controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .cards-controls input {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      width: 260px;
+    }
+
+    .cards-controls select {
+      padding: 0.4rem 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      background: #fff;
+    }
+
+    #cards-count {
+      font-size: 0.8rem;
+      color: #888;
+      margin-left: auto;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .card {
+      border: 1px solid #e8e8e8;
+      border-radius: 5px;
+      padding: 1rem;
+      background: #fafafa;
+    }
+
+    .card-url {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1a1a1a;
+      word-break: break-all;
+    }
+
+    .card-url a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .card-url a:hover { text-decoration: underline; }
+
+    .card-meta {
+      font-size: 0.75rem;
+      color: #888;
+      margin-top: 0.3rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .card-rationale {
+      font-size: 0.85rem;
+      color: #444;
+      line-height: 1.45;
+      border-left: 3px solid #c0392b;
+      padding-left: 0.6rem;
+    }
+
+    .card-quote {
+      margin-top: 0.5rem;
+      font-size: 0.82rem;
+      font-style: italic;
+      color: #333;
+      background: #fff8f8;
+      border: 1px solid #f0d0d0;
+      border-radius: 3px;
+      padding: 0.5rem 0.65rem;
+    }
+
+    .card-quote::before {
+      content: '"';
+      color: #c0392b;
+      font-style: normal;
+      font-weight: 700;
+      margin-right: 0.1rem;
+    }
+
+    .card-quote::after {
+      content: '"';
+      color: #c0392b;
+      font-style: normal;
+      font-weight: 700;
+      margin-left: 0.1rem;
+    }
+
+
+    .load-more {
+      display: block;
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.6rem;
+      background: none;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      color: #444;
+    }
+
+    .load-more:hover { background: #f0f0f0; }
+
+    /* Flips table */
+    .flips-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .flips-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      border-bottom: 1px solid #eee;
+    }
+
+    .flips-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+
+    .flips-table tr:last-child td { border-bottom: none; }
+
+    .flips-table a {
+      color: #1a1a1a;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .flips-table a:hover { text-decoration: underline; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge.partisan { background: #fde8e8; color: #c0392b; }
+    .badge.neutral  { background: #e8f5ed; color: #2c7a4b; }
+
+    .arrow { color: #999; margin: 0 0.3rem; }
+
+    /* Methodology */
+    .methodology {
+      font-size: 0.85rem;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .methodology p { margin-bottom: 0.75rem; }
+    .methodology p:last-child { margin-bottom: 0; }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>US Government Website Sentiment Monitor</h1>
+  <p>Tracking partisan content and potential Hatch Act violations on federal government websites over time.</p>
+</header>
+
+<div class="container">
+
+  <!-- Summary stats -->
+  <div class="stats" id="stats"></div>
+
+  <!-- Time series chart -->
+  <section>
+    <h2>Partisan detections over time</h2>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+  </section>
+
+  <!-- Partisan cards -->
+  <section>
+    <h2>Partisan detections</h2>
+    <div class="cards-controls">
+      <input type="text" id="search" placeholder="Filter by URL or keyword…">
+      <select id="date-filter"><option value="">All dates</option></select>
+      <select id="category-filter">
+        <option value="">All site types</option>
+        <option value="agency">Agency sites only</option>
+        <option value="congressional">Congressional sites</option>
+        <option value="archive">Historical archives</option>
+      </select>
+      <span id="cards-count"></span>
+    </div>
+    <div class="cards" id="cards"></div>
+    <button class="load-more" id="load-more" style="display:none">Show more</button>
+  </section>
+
+  <!-- Label flips -->
+  <section>
+    <h2>Sites that changed classification</h2>
+    <table class="flips-table" id="flips-table">
+      <thead>
+        <tr>
+          <th>URL</th>
+          <th>Change</th>
+          <th>First seen</th>
+          <th>Last seen</th>
+        </tr>
+      </thead>
+      <tbody id="flips-body"></tbody>
+    </table>
+  </section>
+
+  <!-- Methodology -->
+  <section>
+    <h2>Methodology</h2>
+    <div class="methodology">
+      <p>
+        Homepages of ~1,300 US federal government (.gov) websites were scraped at multiple points
+        between October 2025 and February 2026 using a Playwright-based scraper with stealth
+        settings to retrieve rendered page content.
+      </p>
+      <p>
+        Each page's text (up to 4,000 characters) was classified using
+        <strong id="model-name">an LLM</strong> via the OpenRouter API.
+        Sites were labeled <strong>partisan</strong> if the text contained explicit partisan language:
+        named party attacks, political blame statements, or campaign-style rhetoric.
+        Factual policy descriptions and neutral government content were labeled <strong>neutral</strong>.
+        Pages that were blocked, empty, or returned errors are labeled <strong>unknown</strong>.
+      </p>
+      <p>
+        Results are categorized into three groups: <strong>agency sites</strong> (executive branch
+        departments and agencies), <strong>congressional sites</strong> (official caucus and
+        leadership pages, which are expected to reflect partisan positions), and
+        <strong>historical archives</strong> (frozen sites from prior administrations).
+        Headline statistics reflect agency sites only. All categories are available in the
+        partisan detections feed above.
+      </p>
+      <p>
+        Raw data is available for download. This project is independent and not affiliated with
+        any government agency.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  Data last updated: <span id="last-updated"></span>
+</footer>
+
+<script>
+const PAGE_SIZE = 24;
+let allCards = [];
+let filtered = [];
+let shown = 0;
+
+async function init() {
+  const data = await fetch('data.json').then(r => r.json());
+  renderStats(data.summary);
+  renderChart(data.time_series);
+  renderCards(data.partisan_cards, data.time_series.labels);
+  renderFlips(data.flips);
+
+  // Methodology model name
+  const model = data.partisan_cards[0]?.model || '';
+  if (model) document.getElementById('model-name').textContent = model;
+
+  document.getElementById('last-updated').textContent = data.summary.latest_date;
+}
+
+function renderStats(s) {
+  const pct = s.latest_partisan + s.latest_neutral + s.latest_unknown > 0
+    ? ((s.latest_partisan / (s.latest_partisan + s.latest_neutral + s.latest_unknown)) * 100).toFixed(1)
+    : '0';
+
+  const items = [
+    { value: s.latest_partisan, label: `Partisan sites (${s.latest_date})`, cls: 'partisan' },
+    { value: pct + '%', label: 'Of sites with content', cls: 'partisan' },
+    { value: s.total_sites.toLocaleString(), label: 'Unique sites tracked', cls: '' },
+    { value: s.snapshots, label: 'Snapshots taken', cls: '' },
+    { value: s.total_records.toLocaleString(), label: 'Total records', cls: '' },
+  ];
+
+  document.getElementById('stats').innerHTML = items.map(i => `
+    <div class="stat">
+      <div class="stat-value ${i.cls}">${i.value}</div>
+      <div class="stat-label">${i.label}</div>
+    </div>
+  `).join('');
+}
+
+function renderChart(ts) {
+  const ctx = document.getElementById('chart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ts.labels,
+      datasets: [
+        {
+          label: 'Partisan',
+          data: ts.partisan,
+          borderColor: '#c0392b',
+          backgroundColor: 'rgba(192,57,43,0.08)',
+          borderWidth: 2,
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'Neutral',
+          data: ts.neutral,
+          borderColor: '#2c7a4b',
+          backgroundColor: 'rgba(44,122,75,0.06)',
+          borderWidth: 2,
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'Unknown / blocked',
+          data: ts.unknown,
+          borderColor: '#aaa',
+          backgroundColor: 'rgba(170,170,170,0.06)',
+          borderWidth: 1.5,
+          pointRadius: 3,
+          tension: 0.3,
+          borderDash: [4, 3],
+          fill: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 12 }, boxWidth: 14 } },
+        tooltip: { padding: 10 },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#f0f0f0' },
+          ticks: { font: { size: 11 } },
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 } },
+        },
+      },
+    },
+  });
+}
+
+function renderCards(cards, dateLabels) {
+  allCards = cards;
+
+  // Populate date filter
+  const sel = document.getElementById('date-filter');
+  const dates = [...new Set(cards.map(c => c.date))].sort().reverse();
+  dates.forEach(d => {
+    const label = dateLabels.find(l => l.includes(d.slice(5, 7))) || d;
+    sel.innerHTML += `<option value="${d}">${d}</option>`;
+  });
+
+  sel.addEventListener('change', applyFilters);
+  document.getElementById('search').addEventListener('input', applyFilters);
+  document.getElementById('category-filter').addEventListener('change', applyFilters);
+  document.getElementById('load-more').addEventListener('click', showMore);
+
+  // Default to agency only — most relevant for the headline story
+  document.getElementById('category-filter').value = 'agency';
+  applyFilters();
+}
+
+function applyFilters() {
+  const query    = document.getElementById('search').value.toLowerCase();
+  const date     = document.getElementById('date-filter').value;
+  const category = document.getElementById('category-filter').value;
+  filtered = allCards.filter(c => {
+    const matchDate     = !date     || c.date === date;
+    const matchCategory = !category || c.category === category;
+    const matchText     = !query    ||
+      c.url.toLowerCase().includes(query) ||
+      c.rationale.toLowerCase().includes(query);
+    return matchDate && matchCategory && matchText;
+  });
+  shown = 0;
+  document.getElementById('cards').innerHTML = '';
+  showMore();
+  document.getElementById('cards-count').textContent =
+    `${filtered.length} record${filtered.length !== 1 ? 's' : ''}`;
+}
+
+function showMore() {
+  const batch = filtered.slice(shown, shown + PAGE_SIZE);
+  const container = document.getElementById('cards');
+  batch.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    const categoryLabel = {agency: '', congressional: 'Congressional', archive: 'Archive'}[c.category] || '';
+    const categoryBadge = categoryLabel
+      ? `<span class="badge" style="background:#f0f0f0;color:#666;margin-left:0.4rem">${categoryLabel}</span>`
+      : '';
+    const quoteHtml = c.partisan_quote
+      ? `<div class="card-quote">${escHtml(c.partisan_quote)}</div>`
+      : '';
+    div.innerHTML = `
+      <div class="card-url">
+        <a href="${c.url}" target="_blank" rel="noopener">${c.url}</a>${categoryBadge}
+      </div>
+      <div class="card-meta">${c.date}</div>
+      <div class="card-rationale">${escHtml(c.rationale)}</div>
+      ${quoteHtml}
+    `;
+    container.appendChild(div);
+  });
+  shown += batch.length;
+  document.getElementById('load-more').style.display =
+    shown < filtered.length ? 'block' : 'none';
+}
+
+function renderFlips(flips) {
+  const tbody = document.getElementById('flips-body');
+  if (!flips.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#888;padding:1rem">No label changes detected yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = flips.map(f => `
+    <tr>
+      <td><a href="${f.url}" target="_blank" rel="noopener">${f.url}</a></td>
+      <td>
+        <span class="badge ${f.from_label}">${f.from_label}</span>
+        <span class="arrow">→</span>
+        <span class="badge ${f.to_label}">${f.to_label}</span>
+      </td>
+      <td>${f.from_date}</td>
+      <td>${f.to_date}</td>
+    </tr>
+  `).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+
+</body>
+</html>
