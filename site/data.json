@@ -15,7 +15,10 @@
     "peak_partisan_visits": 947435,
     "peak_partisan_reach_pct": 8.1,
     "peak_partisan_date": "Oct 12, 2025",
-    "latest_traffic_coverage": 362
+    "latest_traffic_coverage": 362,
+    "total_partisan_visits_estimated": 82061046,
+    "partisan_visits_days_covered": 120,
+    "partisan_visits_sites_counted": 39
   },
   "time_series": {
     "labels": [
@@ -182,6 +185,608 @@
       5.0,
       4.5,
       3.4
+    ],
+    "cumulative_partisan_visits": [
+      {
+        "date": "2025-10-12",
+        "daily": 891791,
+        "cumulative": 891791
+      },
+      {
+        "date": "2025-10-13",
+        "daily": 1206467,
+        "cumulative": 2098258
+      },
+      {
+        "date": "2025-10-14",
+        "daily": 1387759,
+        "cumulative": 3486017
+      },
+      {
+        "date": "2025-10-15",
+        "daily": 1414975,
+        "cumulative": 4900992
+      },
+      {
+        "date": "2025-10-16",
+        "daily": 1382514,
+        "cumulative": 6283506
+      },
+      {
+        "date": "2025-10-17",
+        "daily": 1200181,
+        "cumulative": 7483687
+      },
+      {
+        "date": "2025-10-18",
+        "daily": 855614,
+        "cumulative": 8339301
+      },
+      {
+        "date": "2025-10-19",
+        "daily": 879091,
+        "cumulative": 9218392
+      },
+      {
+        "date": "2025-10-20",
+        "daily": 1248288,
+        "cumulative": 10466680
+      },
+      {
+        "date": "2025-10-21",
+        "daily": 1328642,
+        "cumulative": 11795322
+      },
+      {
+        "date": "2025-10-22",
+        "daily": 1372623,
+        "cumulative": 13167945
+      },
+      {
+        "date": "2025-10-23",
+        "daily": 1385295,
+        "cumulative": 14553240
+      },
+      {
+        "date": "2025-10-24",
+        "daily": 1257639,
+        "cumulative": 15810879
+      },
+      {
+        "date": "2025-10-25",
+        "daily": 809663,
+        "cumulative": 16620542
+      },
+      {
+        "date": "2025-10-26",
+        "daily": 896831,
+        "cumulative": 17517373
+      },
+      {
+        "date": "2025-10-27",
+        "daily": 1317057,
+        "cumulative": 18834430
+      },
+      {
+        "date": "2025-10-28",
+        "daily": 1342820,
+        "cumulative": 20177250
+      },
+      {
+        "date": "2025-10-29",
+        "daily": 1311981,
+        "cumulative": 21489231
+      },
+      {
+        "date": "2025-10-30",
+        "daily": 1261193,
+        "cumulative": 22750424
+      },
+      {
+        "date": "2025-10-31",
+        "daily": 1184842,
+        "cumulative": 23935266
+      },
+      {
+        "date": "2025-11-01",
+        "daily": 799793,
+        "cumulative": 24735059
+      },
+      {
+        "date": "2025-11-02",
+        "daily": 920995,
+        "cumulative": 25656054
+      },
+      {
+        "date": "2025-11-03",
+        "daily": 1388179,
+        "cumulative": 27044233
+      },
+      {
+        "date": "2025-11-04",
+        "daily": 1365432,
+        "cumulative": 28409665
+      },
+      {
+        "date": "2025-11-05",
+        "daily": 1326691,
+        "cumulative": 29736356
+      },
+      {
+        "date": "2025-11-06",
+        "daily": 1387574,
+        "cumulative": 31123930
+      },
+      {
+        "date": "2025-11-07",
+        "daily": 1259760,
+        "cumulative": 32383690
+      },
+      {
+        "date": "2025-11-08",
+        "daily": 887117,
+        "cumulative": 33270807
+      },
+      {
+        "date": "2025-11-09",
+        "daily": 897889,
+        "cumulative": 34168696
+      },
+      {
+        "date": "2025-11-10",
+        "daily": 1271955,
+        "cumulative": 35440651
+      },
+      {
+        "date": "2025-11-11",
+        "daily": 1194123,
+        "cumulative": 36634774
+      },
+      {
+        "date": "2025-11-12",
+        "daily": 1321767,
+        "cumulative": 37956541
+      },
+      {
+        "date": "2025-11-13",
+        "daily": 442288,
+        "cumulative": 38398829
+      },
+      {
+        "date": "2025-11-14",
+        "daily": 405677,
+        "cumulative": 38804506
+      },
+      {
+        "date": "2025-11-15",
+        "daily": 254908,
+        "cumulative": 39059414
+      },
+      {
+        "date": "2025-11-16",
+        "daily": 260103,
+        "cumulative": 39319517
+      },
+      {
+        "date": "2025-11-17",
+        "daily": 434344,
+        "cumulative": 39753861
+      },
+      {
+        "date": "2025-11-18",
+        "daily": 478303,
+        "cumulative": 40232164
+      },
+      {
+        "date": "2025-11-19",
+        "daily": 480941,
+        "cumulative": 40713105
+      },
+      {
+        "date": "2025-11-20",
+        "daily": 456533,
+        "cumulative": 41169638
+      },
+      {
+        "date": "2025-11-21",
+        "daily": 340329,
+        "cumulative": 41509967
+      },
+      {
+        "date": "2025-11-22",
+        "daily": 221859,
+        "cumulative": 41731826
+      },
+      {
+        "date": "2025-11-23",
+        "daily": 256506,
+        "cumulative": 41988332
+      },
+      {
+        "date": "2025-11-24",
+        "daily": 432807,
+        "cumulative": 42421139
+      },
+      {
+        "date": "2025-11-25",
+        "daily": 411899,
+        "cumulative": 42833038
+      },
+      {
+        "date": "2025-11-26",
+        "daily": 322742,
+        "cumulative": 43155780
+      },
+      {
+        "date": "2025-11-27",
+        "daily": 249907,
+        "cumulative": 43405687
+      },
+      {
+        "date": "2025-11-28",
+        "daily": 284325,
+        "cumulative": 43690012
+      },
+      {
+        "date": "2025-11-29",
+        "daily": 290144,
+        "cumulative": 43980156
+      },
+      {
+        "date": "2025-11-30",
+        "daily": 303915,
+        "cumulative": 44284071
+      },
+      {
+        "date": "2025-12-01",
+        "daily": 436836,
+        "cumulative": 44720907
+      },
+      {
+        "date": "2025-12-02",
+        "daily": 433628,
+        "cumulative": 45154535
+      },
+      {
+        "date": "2025-12-03",
+        "daily": 463067,
+        "cumulative": 45617602
+      },
+      {
+        "date": "2025-12-04",
+        "daily": 438290,
+        "cumulative": 46055892
+      },
+      {
+        "date": "2025-12-05",
+        "daily": 410382,
+        "cumulative": 46466274
+      },
+      {
+        "date": "2025-12-06",
+        "daily": 285251,
+        "cumulative": 46751525
+      },
+      {
+        "date": "2025-12-07",
+        "daily": 314130,
+        "cumulative": 47065655
+      },
+      {
+        "date": "2025-12-08",
+        "daily": 517829,
+        "cumulative": 47583484
+      },
+      {
+        "date": "2025-12-09",
+        "daily": 638865,
+        "cumulative": 48222349
+      },
+      {
+        "date": "2025-12-10",
+        "daily": 590393,
+        "cumulative": 48812742
+      },
+      {
+        "date": "2025-12-11",
+        "daily": 501522,
+        "cumulative": 49314264
+      },
+      {
+        "date": "2025-12-12",
+        "daily": 418450,
+        "cumulative": 49732714
+      },
+      {
+        "date": "2025-12-13",
+        "daily": 265954,
+        "cumulative": 49998668
+      },
+      {
+        "date": "2025-12-14",
+        "daily": 270630,
+        "cumulative": 50269298
+      },
+      {
+        "date": "2025-12-15",
+        "daily": 430608,
+        "cumulative": 50699906
+      },
+      {
+        "date": "2025-12-16",
+        "daily": 447128,
+        "cumulative": 51147034
+      },
+      {
+        "date": "2025-12-17",
+        "daily": 425444,
+        "cumulative": 51572478
+      },
+      {
+        "date": "2025-12-18",
+        "daily": 409159,
+        "cumulative": 51981637
+      },
+      {
+        "date": "2025-12-19",
+        "daily": 350546,
+        "cumulative": 52332183
+      },
+      {
+        "date": "2025-12-20",
+        "daily": 240447,
+        "cumulative": 52572630
+      },
+      {
+        "date": "2025-12-21",
+        "daily": 257106,
+        "cumulative": 52829736
+      },
+      {
+        "date": "2025-12-22",
+        "daily": 407978,
+        "cumulative": 53237714
+      },
+      {
+        "date": "2025-12-23",
+        "daily": 351949,
+        "cumulative": 53589663
+      },
+      {
+        "date": "2025-12-24",
+        "daily": 271867,
+        "cumulative": 53861530
+      },
+      {
+        "date": "2025-12-25",
+        "daily": 259914,
+        "cumulative": 54121444
+      },
+      {
+        "date": "2025-12-26",
+        "daily": 303399,
+        "cumulative": 54424843
+      },
+      {
+        "date": "2025-12-27",
+        "daily": 273162,
+        "cumulative": 54698005
+      },
+      {
+        "date": "2025-12-28",
+        "daily": 263779,
+        "cumulative": 54961784
+      },
+      {
+        "date": "2025-12-29",
+        "daily": 347809,
+        "cumulative": 55309593
+      },
+      {
+        "date": "2025-12-30",
+        "daily": 369909,
+        "cumulative": 55679502
+      },
+      {
+        "date": "2025-12-31",
+        "daily": 344576,
+        "cumulative": 56024078
+      },
+      {
+        "date": "2026-01-01",
+        "daily": 301956,
+        "cumulative": 56326034
+      },
+      {
+        "date": "2026-01-02",
+        "daily": 380277,
+        "cumulative": 56706311
+      },
+      {
+        "date": "2026-01-03",
+        "daily": 361407,
+        "cumulative": 57067718
+      },
+      {
+        "date": "2026-01-04",
+        "daily": 360806,
+        "cumulative": 57428524
+      },
+      {
+        "date": "2026-01-05",
+        "daily": 410486,
+        "cumulative": 57839010
+      },
+      {
+        "date": "2026-01-06",
+        "daily": 410670,
+        "cumulative": 58249680
+      },
+      {
+        "date": "2026-01-07",
+        "daily": 487958,
+        "cumulative": 58737638
+      },
+      {
+        "date": "2026-01-08",
+        "daily": 414182,
+        "cumulative": 59151820
+      },
+      {
+        "date": "2026-01-09",
+        "daily": 280851,
+        "cumulative": 59432671
+      },
+      {
+        "date": "2026-01-10",
+        "daily": 199818,
+        "cumulative": 59632489
+      },
+      {
+        "date": "2026-01-11",
+        "daily": 124375,
+        "cumulative": 59756864
+      },
+      {
+        "date": "2026-01-12",
+        "daily": 285731,
+        "cumulative": 60042595
+      },
+      {
+        "date": "2026-01-13",
+        "daily": 351131,
+        "cumulative": 60393726
+      },
+      {
+        "date": "2026-01-14",
+        "daily": 660470,
+        "cumulative": 61054196
+      },
+      {
+        "date": "2026-01-15",
+        "daily": 859813,
+        "cumulative": 61914009
+      },
+      {
+        "date": "2026-01-16",
+        "daily": 655705,
+        "cumulative": 62569714
+      },
+      {
+        "date": "2026-01-17",
+        "daily": 520010,
+        "cumulative": 63089724
+      },
+      {
+        "date": "2026-01-18",
+        "daily": 461336,
+        "cumulative": 63551060
+      },
+      {
+        "date": "2026-01-19",
+        "daily": 446257,
+        "cumulative": 63997317
+      },
+      {
+        "date": "2026-01-20",
+        "daily": 581624,
+        "cumulative": 64578941
+      },
+      {
+        "date": "2026-01-21",
+        "daily": 613619,
+        "cumulative": 65192560
+      },
+      {
+        "date": "2026-01-22",
+        "daily": 626021,
+        "cumulative": 65818581
+      },
+      {
+        "date": "2026-01-23",
+        "daily": 517041,
+        "cumulative": 66335622
+      },
+      {
+        "date": "2026-01-24",
+        "daily": 411657,
+        "cumulative": 66747279
+      },
+      {
+        "date": "2026-01-25",
+        "daily": 453477,
+        "cumulative": 67200756
+      },
+      {
+        "date": "2026-01-26",
+        "daily": 581060,
+        "cumulative": 67781816
+      },
+      {
+        "date": "2026-01-27",
+        "daily": 620263,
+        "cumulative": 68402079
+      },
+      {
+        "date": "2026-01-28",
+        "daily": 596244,
+        "cumulative": 68998323
+      },
+      {
+        "date": "2026-01-29",
+        "daily": 1347907,
+        "cumulative": 70346230
+      },
+      {
+        "date": "2026-01-30",
+        "daily": 1247942,
+        "cumulative": 71594172
+      },
+      {
+        "date": "2026-01-31",
+        "daily": 850182,
+        "cumulative": 72444354
+      },
+      {
+        "date": "2026-02-01",
+        "daily": 850433,
+        "cumulative": 73294787
+      },
+      {
+        "date": "2026-02-02",
+        "daily": 1506448,
+        "cumulative": 74801235
+      },
+      {
+        "date": "2026-02-03",
+        "daily": 1513347,
+        "cumulative": 76314582
+      },
+      {
+        "date": "2026-02-04",
+        "daily": 1530292,
+        "cumulative": 77844874
+      },
+      {
+        "date": "2026-02-05",
+        "daily": 1392027,
+        "cumulative": 79236901
+      },
+      {
+        "date": "2026-02-06",
+        "daily": 1280978,
+        "cumulative": 80517879
+      },
+      {
+        "date": "2026-02-07",
+        "daily": 793407,
+        "cumulative": 81311286
+      },
+      {
+        "date": "2026-02-08",
+        "daily": 749760,
+        "cumulative": 82061046
+      }
     ]
   },
   "partisan_cards": [
