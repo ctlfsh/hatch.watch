@@ -411,7 +411,12 @@
     <div class="chart-toggle">
       <button id="toggle-sites" class="active" onclick="switchChart('sites')">Sites</button>
       <button id="toggle-traffic" onclick="switchChart('traffic')">Traffic %</button>
+      <button id="toggle-daily" style="display:none" onclick="switchChart('daily')">Est. Daily</button>
       <button id="toggle-cumulative" style="display:none" onclick="switchChart('cumulative')">Est. Reach</button>
+    </div>
+    <div id="daily-legend" style="display:none; font-size:0.8rem; color:#666; margin: 0.4rem 0 0 0.25rem; gap:1.25rem; align-items:center;">
+      <span><span style="display:inline-block;width:12px;height:12px;background:rgba(192,57,43,0.85);border-radius:2px;margin-right:4px;vertical-align:middle"></span>Snapshot day (measured)</span>
+      <span><span style="display:inline-block;width:12px;height:12px;background:rgba(192,57,43,0.30);border-radius:2px;margin-right:4px;vertical-align:middle"></span>Interpolated (estimated)</span>
     </div>
     <div class="chart-wrap">
       <canvas id="chart"></canvas>
@@ -556,6 +561,13 @@
         Days with no DAP data are silently excluded; the cumulative value carries forward across those
         gaps on the chart.
       </p>
+      <p>
+        The <strong>Est. Daily</strong> chart shows the same data broken down by calendar day — the
+        per-day partisan visit count rather than the running total. Dark bars are snapshot days (sites
+        were actually classified on that date); light bars are interpolated days where partisan status
+        is extrapolated from the surrounding snapshots. The same snapshot-bracketing methodology applies:
+        a day is counted only if the site was partisan at both the preceding and following snapshot.
+      </p>
 
       <h3>Caveats and potential biases in the cumulative estimate</h3>
       <ul style="margin: 0.75rem 0 0.75rem 1.5rem; line-height: 1.8">
@@ -590,6 +602,11 @@
 
 <script>
 const PAGE_SIZE = 24;
+const SNAPSHOT_DATES = new Set([
+  '2025-10-12','2025-11-06','2025-11-13',
+  '2026-01-29','2026-01-30','2026-01-31',
+  '2026-02-01','2026-02-02','2026-02-03','2026-02-04','2026-02-08'
+]);
 let allCards = [];
 let filtered = [];
 let shown = 0;
@@ -612,6 +629,7 @@ async function init() {
   // Show Est. Reach toggle only if cumulative data present
   if (data.time_series.cumulative_partisan_visits?.length > 0) {
     document.getElementById('toggle-cumulative').style.display = '';
+    document.getElementById('toggle-daily').style.display = '';
   }
 
   const model = data.partisan_cards[0]?.model || '';
@@ -747,7 +765,7 @@ function renderChart(ts, mode) {
 
   const ctx = canvas.getContext('2d');
 
-  const annotations = mode !== 'cumulative' ? buildAnnotations(ts.labels, notableEvents) : {};
+  const annotations = (mode !== 'cumulative' && mode !== 'daily') ? buildAnnotations(ts.labels, notableEvents) : {};
 
   if (mode === 'sites') {
     document.getElementById('chart-note').textContent = '';
@@ -859,6 +877,75 @@ function renderChart(ts, mode) {
             },
           },
           x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 } },
+          },
+        },
+      },
+    });
+  } else if (mode === 'daily') {
+    document.getElementById('chart-note').textContent =
+      'Estimated daily visits to partisan agency sites. Dark bars = snapshot days (sites classified on that date). Light bars = interpolated (partisan status extrapolated from surrounding snapshots).';
+
+    const points = ts.cumulative_partisan_visits.map(e => ({ x: e.date, y: e.daily }));
+
+    const bgColors = points.map(p =>
+      SNAPSHOT_DATES.has(p.x) ? 'rgba(192,57,43,0.85)' : 'rgba(192,57,43,0.30)'
+    );
+    const borderColors = points.map(p =>
+      SNAPSHOT_DATES.has(p.x) ? 'rgba(150,40,30,0.9)' : 'rgba(150,40,30,0.35)'
+    );
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        datasets: [{
+          label: 'Est. daily partisan visits',
+          data: points,
+          backgroundColor: bgColors,
+          borderColor: borderColors,
+          borderWidth: 1,
+          barPercentage: 0.9,
+          categoryPercentage: 1.0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const dateStr = ctx.raw?.x || '';
+                const isSnap = SNAPSHOT_DATES.has(dateStr);
+                const isRollback = dateStr === '2025-11-13';
+                const tag = isSnap
+                  ? (isRollback ? 'snapshot day · shutdown rollback' : 'snapshot day')
+                  : 'estimated';
+                return ` ${fmtVisitsFull(ctx.parsed.y)} visits · ${tag}`;
+              },
+            },
+          },
+          annotation: { annotations: buildCumulativeAnnotations() },
+        },
+        scales: {
+          y: {
+            title: { display: true, text: 'Est. daily visits', font: { size: 11 }, color: '#888' },
+            grid: { color: '#f0f0f0' },
+            ticks: {
+              font: { size: 11 },
+              callback: v => {
+                if (v >= 1e6) return (v % 1e6 === 0 ? (v / 1e6) + 'M' : (v / 1e6).toFixed(1) + 'M');
+                if (v >= 1e3) return Math.round(v / 1e3) + 'K';
+                return v;
+              },
+            },
+          },
+          x: {
+            type: 'time',
+            time: { unit: 'month', displayFormats: { month: 'MMM yyyy' } },
             grid: { display: false },
             ticks: { font: { size: 11 } },
           },
@@ -1013,9 +1100,12 @@ function switchChart(mode) {
   chartMode = mode;
   document.getElementById('toggle-sites').classList.toggle('active', mode === 'sites');
   document.getElementById('toggle-traffic').classList.toggle('active', mode === 'traffic');
+  document.getElementById('toggle-daily').classList.toggle('active', mode === 'daily');
   document.getElementById('toggle-cumulative').classList.toggle('active', mode === 'cumulative');
+  document.getElementById('daily-legend').style.display = mode === 'daily' ? 'flex' : 'none';
 
   if (mode === 'traffic' && !timeSeriesData.agency_partisan_reach_pct) return;
+  if (mode === 'daily' && !timeSeriesData.cumulative_partisan_visits?.length) return;
   if (mode === 'cumulative' && !timeSeriesData.cumulative_partisan_visits?.length) return;
   renderChart(timeSeriesData, mode);
 }
