@@ -735,14 +735,19 @@ function buildAnnotations(labels, events) {
 }
 
 function renderChart(ts, mode) {
-  const ctx = document.getElementById('chart').getContext('2d');
+  const canvas = document.getElementById('chart');
 
+  // Destroy via our reference, or via Chart.js registry if orphaned
   if (chartInstance) {
     chartInstance.destroy();
     chartInstance = null;
   }
+  const existing = Chart.getChart(canvas);
+  if (existing) existing.destroy();
 
-  const annotations = buildAnnotations(ts.labels, notableEvents);
+  const ctx = canvas.getContext('2d');
+
+  const annotations = mode !== 'cumulative' ? buildAnnotations(ts.labels, notableEvents) : {};
 
   if (mode === 'sites') {
     document.getElementById('chart-note').textContent = '';
@@ -807,7 +812,7 @@ function renderChart(ts, mode) {
         },
       },
     });
-  } else {
+  } else if (mode === 'traffic') {
     // Traffic % view
     document.getElementById('chart-note').textContent =
       'Unknown/blocked sites are excluded from visit data — they returned no content and have no measurable traffic.';
@@ -860,9 +865,7 @@ function renderChart(ts, mode) {
         },
       },
     });
-  }
-
-  if (mode === 'cumulative') {
+  } else if (mode === 'cumulative') {
     document.getElementById('chart-note').textContent =
       'Running total of estimated daily visits to partisan agency sites. Shaded region: no snapshot taken — visits extrapolated from surrounding snapshots. Dashed lines mark notable dates within the gap. Sites with no DAP data excluded.';
 
