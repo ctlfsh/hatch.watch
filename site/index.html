@@ -6,6 +6,7 @@
   <title>hatch.watch — US Government Website Partisan Monitor</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -410,6 +411,7 @@
     <div class="chart-toggle">
       <button id="toggle-sites" class="active" onclick="switchChart('sites')">Sites</button>
       <button id="toggle-traffic" onclick="switchChart('traffic')">Traffic %</button>
+      <button id="toggle-cumulative" style="display:none" onclick="switchChart('cumulative')">Est. Reach</button>
     </div>
     <div class="chart-wrap">
       <canvas id="chart"></canvas>
@@ -522,6 +524,56 @@
         DAP data for the latest snapshot.
       </p>
 
+      <h3>Estimating cumulative partisan reach</h3>
+      <p>
+        The <strong>Est. Reach</strong> chart shows a running total of estimated daily visits to
+        partisan agency sites across the full observation period (Oct 12, 2025 – Feb 8, 2026).
+      </p>
+      <p>
+        <strong>Method:</strong> For each pair of consecutive snapshots with distinct calendar dates,
+        we identify agency sites that were classified partisan at <em>both</em> the earlier and later
+        snapshot. Every calendar day between those two snapshots is attributed to those sites — visits
+        for each day are looked up in the DAP cache and summed. This is a conservative estimate: a site
+        must be confirmed partisan at both surrounding snapshots to be counted for any day in between.
+        Where a same-day snapshot pair exists (Nov 13 AM/PM, Jan 30/Jan 30 PM, Jan 31 AM), those pairs
+        contribute zero inter-snapshot days and are skipped; the conservative (neutral) side is always
+        used when a site's status is ambiguous at a same-day boundary.
+      </p>
+      <p>
+        <strong>Boundary days:</strong> Oct 12 is included — a site partisan at both Oct 12 and Nov 6
+        is counted from Oct 12 onward. Feb 8 (the final snapshot) is a special case: sites classified
+        partisan at Feb 8 are counted for that single day with no subsequent snapshot required.
+      </p>
+      <p>
+        <strong>The 77-day gap (Nov 13 – Jan 29)</strong> is the longest interval without an intermediate
+        snapshot, shown as a shaded band on the chart. Jan 6, 2026 (one year after the Jan 6 Capitol
+        event) and Jan 20, 2026 (one year after the inauguration) both fall within this window and
+        represent plausible moments of heightened partisan activity on government websites. This estimate
+        neither confirms nor denies activity during this period — it is an extrapolation from the
+        Nov 13 PM and Jan 29 snapshots.
+      </p>
+      <p>
+        Days with no DAP data are silently excluded; the cumulative value carries forward across those
+        gaps on the chart.
+      </p>
+
+      <h3>Caveats and potential biases in the cumulative estimate</h3>
+      <ul style="margin: 0.75rem 0 0.75rem 1.5rem; line-height: 1.8">
+        <li><strong>Continuity assumption</strong> — a site confirmed partisan at two snapshots may have
+          briefly removed or added partisan language in between. The estimate could be either higher or
+          lower than actual exposure; this is not a one-directional bias.</li>
+        <li><strong>77-day gap</strong> — the Nov 13–Jan 29 interval is the longest extrapolation window.
+          The Jan 6 and Jan 20 anniversaries within it are unverified by any intermediate snapshot.</li>
+        <li><strong>Apex-domain only</strong> — subdomain traffic (e.g. <code>apps.irs.gov</code>) is
+          excluded. For agencies with complex subdomain structures, the estimate understates total web presence.</li>
+        <li><strong>DAP coverage gap</strong> — ~898 tracked sites have no DAP data at all. If any carried
+          partisan content, their visits are not counted. The total is a floor, not a ceiling.</li>
+        <li><strong>Visits ≠ unique people</strong> — DAP visits are sessions; one person can generate
+          multiple sessions per day. This counts sessions, not individuals reached.</li>
+        <li><strong>Homepage only</strong> — we classified homepage text. A visitor may have navigated
+          directly to an interior page and never seen the partisan content on the homepage.</li>
+      </ul>
+
       <h3>Data</h3>
       <p>
         Raw data is available for download. This project is independent and not affiliated with
@@ -556,6 +608,11 @@ async function init() {
   renderNotableCallouts(notableEvents);
   renderCards(data.partisan_cards);
   renderFlips(data.flips);
+
+  // Show Est. Reach toggle only if cumulative data present
+  if (data.time_series.cumulative_partisan_visits?.length > 0) {
+    document.getElementById('toggle-cumulative').style.display = '';
+  }
 
   const model = data.partisan_cards[0]?.model || '';
   if (model) document.getElementById('model-name').textContent = model;
@@ -628,6 +685,16 @@ function renderStats(s) {
         footnote: s.latest_date,
       },
     ];
+
+    // 5th KPI: cumulative estimate — only if field present
+    if (s.total_partisan_visits_estimated) {
+      reachItems.push({
+        value: fmtVisits(s.total_partisan_visits_estimated),
+        label: 'Est. total visits (Oct–Feb)',
+        cls: 'partisan',
+        footnote: 'Oct 12, 2025 – Feb 8, 2026 · partisan at consecutive snapshots · see methodology',
+      });
+    }
 
     document.getElementById('stats-reach').innerHTML = reachItems.map(i => `
       <div class="stat">
@@ -794,17 +861,159 @@ function renderChart(ts, mode) {
       },
     });
   }
+
+  if (mode === 'cumulative') {
+    document.getElementById('chart-note').textContent =
+      'Running total of estimated daily visits to partisan agency sites. Shaded region: no snapshot taken — visits extrapolated from surrounding snapshots. Dashed lines mark notable dates within the gap. Sites with no DAP data excluded.';
+
+    const points = ts.cumulative_partisan_visits.map(e => ({ x: e.date, y: e.cumulative }));
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: 'Cumulative partisan visits (est.)',
+          data: points,
+          borderColor: '#c0392b',
+          backgroundColor: 'rgba(192,57,43,0.10)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.2,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${fmtVisits(ctx.parsed.y)} cumulative visits`,
+            },
+          },
+          annotation: { annotations: buildCumulativeAnnotations() },
+        },
+        scales: {
+          y: {
+            title: { display: true, text: 'Cumulative estimated visits', font: { size: 11 }, color: '#888' },
+            grid: { color: '#f0f0f0' },
+            ticks: {
+              font: { size: 11 },
+              callback: v => {
+                if (v >= 1e6) return (v % 1e6 === 0 ? (v / 1e6) + 'M' : (v / 1e6).toFixed(1) + 'M');
+                if (v >= 1e3) return Math.round(v / 1e3) + 'K';
+                return v;
+              },
+            },
+          },
+          x: {
+            type: 'time',
+            time: {
+              unit: 'month',
+              displayFormats: { month: 'MMM yyyy' },
+            },
+            grid: { display: false },
+            ticks: { font: { size: 11 } },
+          },
+        },
+      },
+    });
+  }
+}
+
+function buildCumulativeAnnotations() {
+  return {
+    // 77-day gap shaded band (no snapshot Nov 13 – Jan 29)
+    gapBand: {
+      type: 'box',
+      xMin: '2025-11-13',
+      xMax: '2026-01-29',
+      backgroundColor: 'rgba(0,0,0,0.04)',
+      borderWidth: 0,
+      label: {
+        display: true,
+        content: 'No snapshot',
+        position: { x: 'center', y: 'start' },
+        color: '#999',
+        font: { size: 10 },
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        padding: 2,
+      },
+    },
+    // Shutdown rollback line
+    shutdown: {
+      type: 'line',
+      xMin: '2025-11-13',
+      xMax: '2025-11-13',
+      borderColor: '#e6a817',
+      borderWidth: 2,
+      borderDash: [5, 4],
+      label: {
+        display: true,
+        content: '①',
+        position: 'end',
+        yAdjust: -10,
+        backgroundColor: 'transparent',
+        color: '#e6a817',
+        font: { size: 13, weight: '700' },
+        borderWidth: 0,
+        padding: 0,
+      },
+    },
+    // Jan 6 anniversary
+    jan6: {
+      type: 'line',
+      xMin: '2026-01-06',
+      xMax: '2026-01-06',
+      borderColor: '#bbb',
+      borderWidth: 1,
+      borderDash: [3, 3],
+      label: {
+        display: true,
+        content: 'Jan 6 anniversary',
+        position: 'end',
+        yAdjust: -10,
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        color: '#888',
+        font: { size: 9 },
+        borderWidth: 0,
+        padding: 2,
+      },
+    },
+    // Jan 20 inauguration anniversary
+    jan20: {
+      type: 'line',
+      xMin: '2026-01-20',
+      xMax: '2026-01-20',
+      borderColor: '#bbb',
+      borderWidth: 1,
+      borderDash: [3, 3],
+      label: {
+        display: true,
+        content: 'Inauguration anniversary',
+        position: 'end',
+        yAdjust: -10,
+        backgroundColor: 'rgba(255,255,255,0.85)',
+        color: '#888',
+        font: { size: 9 },
+        borderWidth: 0,
+        padding: 2,
+      },
+    },
+  };
 }
 
 function switchChart(mode) {
   chartMode = mode;
   document.getElementById('toggle-sites').classList.toggle('active', mode === 'sites');
   document.getElementById('toggle-traffic').classList.toggle('active', mode === 'traffic');
+  document.getElementById('toggle-cumulative').classList.toggle('active', mode === 'cumulative');
 
-  // Traffic % only available if data present
-  if (mode === 'traffic' && !timeSeriesData.agency_partisan_reach_pct) {
-    return;
-  }
+  if (mode === 'traffic' && !timeSeriesData.agency_partisan_reach_pct) return;
+  if (mode === 'cumulative' && !timeSeriesData.cumulative_partisan_visits?.length) return;
   renderChart(timeSeriesData, mode);
 }
 

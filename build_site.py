@@ -12,6 +12,7 @@ Usage:
     python build_site.py --input master_scrapes_gemma4_31b.jsonl --traffic dap_traffic.json
 """
 import argparse
+import datetime
 import json
 import re
 from collections import defaultdict
@@ -122,6 +123,102 @@ def apex_domain(url: str) -> str:
 # ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
+
+def build_cumulative(snapshots: list, site_history: dict, traffic: dict) -> dict:
+    """
+    Compute daily cumulative partisan visit estimates across the observation period.
+
+    Logic:
+    - For each consecutive snapshot pair with distinct calendar dates, find agency
+      sites that are partisan at BOTH snap_a and snap_b (conservative estimate).
+    - Count each calendar day from snap_a_date through snap_b_date - 1 inclusive.
+    - Special case: Feb 8 (final snapshot) uses only snap_a partisan label.
+    - Same-day pairs (Nov 13 AM→PM, Jan 30→Jan 30 PM, Jan 31 AM) are skipped.
+    - Days with no DAP data are skipped silently (not included in output).
+
+    Returns dict with:
+      "series": list of {date, daily, cumulative}
+      "total": final cumulative value
+      "days_covered": count of entries
+      "sites_counted": count of unique contributing URLs
+    """
+    contributing_urls = set()
+    daily_totals = {}  # calendar date string -> int visits
+
+    # Build consecutive pairs, skipping same-calendar-date pairs
+    pairs = []
+    for i in range(len(snapshots) - 1):
+        snap_a = snapshots[i]
+        snap_b = snapshots[i + 1]
+        date_a = dap_fetch_date(snap_a)
+        date_b = dap_fetch_date(snap_b)
+        if date_a == date_b:
+            continue  # same-day pair — skip
+        pairs.append((snap_a, snap_b, date_a, date_b))
+
+    for snap_a, snap_b, date_a, date_b in pairs:
+        # Sites partisan at both endpoints (conservative — uses snap_b which is the
+        # later/neutral side for same-day boundaries like Nov 13 PM)
+        partisan_both = {
+            url for url, history in site_history.items()
+            if (site_category(url) == "agency"
+                and history.get(snap_a) == "partisan"
+                and history.get(snap_b) == "partisan")
+        }
+
+        # Iterate calendar days: snap_a_date through snap_b_date - 1 inclusive
+        d = datetime.date.fromisoformat(date_a)
+        end = datetime.date.fromisoformat(date_b)
+        while d < end:
+            day_str = str(d)
+            day_data = traffic.get("dates", {}).get(day_str, {})
+            if day_data:
+                day_visits = 0
+                for url in partisan_both:
+                    domain = apex_domain(url)
+                    v = day_data.get("domains", {}).get(domain, 0)
+                    if v:
+                        day_visits += v
+                        contributing_urls.add(url)
+                if day_visits > 0:
+                    daily_totals[day_str] = daily_totals.get(day_str, 0) + day_visits
+            d += datetime.timedelta(days=1)
+
+    # Special case: Feb 8 (final snapshot, no snap_b)
+    final_snap = snapshots[-1]
+    final_date = dap_fetch_date(final_snap)
+    partisan_final = {
+        url for url, history in site_history.items()
+        if (site_category(url) == "agency"
+            and history.get(final_snap) == "partisan")
+    }
+    day_data = traffic.get("dates", {}).get(final_date, {})
+    if day_data:
+        day_visits = 0
+        for url in partisan_final:
+            domain = apex_domain(url)
+            v = day_data.get("domains", {}).get(domain, 0)
+            if v:
+                day_visits += v
+                contributing_urls.add(url)
+        if day_visits > 0:
+            daily_totals[final_date] = daily_totals.get(final_date, 0) + day_visits
+
+    # Sort and compute running cumulative
+    sorted_days = sorted(daily_totals.keys())
+    series = []
+    cumulative = 0
+    for day in sorted_days:
+        cumulative += daily_totals[day]
+        series.append({"date": day, "daily": daily_totals[day], "cumulative": cumulative})
+
+    return {
+        "series":       series,
+        "total":        cumulative,
+        "days_covered": len(series),
+        "sites_counted": len(contributing_urls),
+    }
+
 
 def build(input_path: Path, out_dir: Path, traffic_path: Path = None):
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -258,6 +355,15 @@ def build(input_path: Path, out_dir: Path, traffic_path: Path = None):
         summary["peak_partisan_date"]      = SNAPSHOT_LABELS.get(peak_snap, peak_snap)
         summary["latest_traffic_coverage"] = traffic_coverage[latest]
 
+    # Cumulative partisan visit estimate — only if traffic data provided
+    if traffic:
+        cum = build_cumulative(snapshots, site_history, traffic)
+        if cum["series"]:
+            time_series["cumulative_partisan_visits"] = cum["series"]
+            summary["total_partisan_visits_estimated"] = cum["total"]
+            summary["partisan_visits_days_covered"]    = cum["days_covered"]
+            summary["partisan_visits_sites_counted"]   = cum["sites_counted"]
+
     # Flip tracker — agency sites only, exclude archive
     flips = []
     for url, history in site_history.items():
@@ -307,6 +413,13 @@ def build(input_path: Path, out_dir: Path, traffic_path: Path = None):
         print(f"  Traffic data: {summary.get('latest_traffic_coverage', 0)} sites with data in latest snapshot")
         print(f"  Peak reach: {summary.get('peak_partisan_reach_pct', 0)}% on {summary.get('peak_partisan_date', '')}")
         print(f"  Latest reach: {summary.get('latest_partisan_reach_pct', 0)}% on {summary.get('latest_date', '')}")
+        if "total_partisan_visits_estimated" in summary:
+            total = summary["total_partisan_visits_estimated"]
+            days  = summary["partisan_visits_days_covered"]
+            sites = summary["partisan_visits_sites_counted"]
+            print(f"  Est. cumulative partisan visits: {total:,}")
+            print(f"  Days with data: {days} / 120")
+            print(f"  Sites contributing: {sites}")
 
 
 # ---------------------------------------------------------------------------
