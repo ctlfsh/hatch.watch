@@ -885,7 +885,7 @@ function renderChart(ts, mode) {
     });
   } else if (mode === 'daily') {
     document.getElementById('chart-note').textContent =
-      'Estimated daily visits to partisan agency sites. Dark bars = snapshot days (sites classified on that date). Light bars = interpolated (partisan status extrapolated from surrounding snapshots).';
+      'Estimated daily visits to partisan agency sites. Dark bars = snapshot days (sites classified on that date). Light bars = interpolated (partisan status extrapolated from surrounding snapshots). Shaded region: no snapshot data available for Nov 13, 2025 – Jan 29, 2026.';
 
     const points = ts.cumulative_partisan_visits.map(e => ({ x: e.date, y: e.daily }));
 
@@ -945,6 +945,9 @@ function renderChart(ts, mode) {
           },
           x: {
             type: 'time',
+            min: '2025-10-12',
+            max: '2026-02-08',
+            offset: false,
             time: { unit: 'month', displayFormats: { month: 'MMM yyyy' } },
             grid: { display: false },
             ticks: { font: { size: 11 } },
@@ -954,7 +957,7 @@ function renderChart(ts, mode) {
     });
   } else if (mode === 'cumulative') {
     document.getElementById('chart-note').textContent =
-      'Running total of estimated daily visits to partisan agency sites. Shaded region: no snapshot taken — visits extrapolated from surrounding snapshots. Dashed lines mark notable dates within the gap. Sites with no DAP data excluded.';
+      'Running total of estimated daily visits to partisan agency sites. Shaded region: no snapshot data available for Nov 13, 2025 – Jan 29, 2026 — visits extrapolated from surrounding snapshots. Dashed lines mark notable dates within the gap. Sites with no DAP data excluded.';
 
     const points = ts.cumulative_partisan_visits.map(e => ({ x: e.date, y: e.cumulative }));
 
@@ -1000,6 +1003,8 @@ function renderChart(ts, mode) {
           },
           x: {
             type: 'time',
+            min: '2025-10-12',
+            max: '2026-02-08',
             time: {
               unit: 'month',
               displayFormats: { month: 'MMM yyyy' },
@@ -1022,16 +1027,7 @@ function buildCumulativeAnnotations() {
       xMax: '2026-01-29',
       backgroundColor: 'rgba(0,0,0,0.04)',
       borderWidth: 0,
-      label: {
-        display: true,
-        content: 'No snapshot',
-        position: { x: 'center', y: 'start' },
-        color: '#999',
-        font: { size: 10 },
-        backgroundColor: 'transparent',
-        borderWidth: 0,
-        padding: 2,
-      },
+      label: { display: false },
     },
     // Shutdown rollback line
     shutdown: {
@@ -1053,7 +1049,7 @@ function buildCumulativeAnnotations() {
         padding: 0,
       },
     },
-    // Jan 6 anniversary
+    // Jan 6 anniversary — line only, label as separate label annotation
     jan6: {
       type: 'line',
       xMin: '2026-01-06',
@@ -1061,19 +1057,24 @@ function buildCumulativeAnnotations() {
       borderColor: '#bbb',
       borderWidth: 1,
       borderDash: [3, 3],
-      label: {
-        display: true,
-        content: 'Jan 6 anniversary',
-        position: 'end',
-        yAdjust: -10,
-        backgroundColor: 'rgba(255,255,255,0.85)',
-        color: '#888',
-        font: { size: 9 },
-        borderWidth: 0,
-        padding: 2,
-      },
+      label: { display: false },
     },
-    // Jan 20 inauguration anniversary
+    jan6Label: {
+      type: 'label',
+      xValue: '2026-01-06',
+      yValue: 'max',
+      xAdjust: 4,
+      yAdjust: 14,
+      content: 'Jan 6 anniversary',
+      backgroundColor: 'rgba(255,255,255,0.85)',
+      color: '#888',
+      font: { size: 9 },
+      borderWidth: 0,
+      padding: 2,
+      textAlign: 'left',
+      position: 'start',
+    },
+    // Jan 20 inauguration anniversary — line only, label as separate label annotation
     jan20: {
       type: 'line',
       xMin: '2026-01-20',
@@ -1081,17 +1082,22 @@ function buildCumulativeAnnotations() {
       borderColor: '#bbb',
       borderWidth: 1,
       borderDash: [3, 3],
-      label: {
-        display: true,
-        content: 'Inauguration anniversary',
-        position: 'end',
-        yAdjust: -10,
-        backgroundColor: 'rgba(255,255,255,0.85)',
-        color: '#888',
-        font: { size: 9 },
-        borderWidth: 0,
-        padding: 2,
-      },
+      label: { display: false },
+    },
+    jan20Label: {
+      type: 'label',
+      xValue: '2026-01-20',
+      yValue: 'max',
+      xAdjust: 4,
+      yAdjust: 32,
+      content: 'Inauguration anniversary',
+      backgroundColor: 'rgba(255,255,255,0.85)',
+      color: '#888',
+      font: { size: 9 },
+      borderWidth: 0,
+      padding: 2,
+      textAlign: 'left',
+      position: 'start',
     },
   };
 }
