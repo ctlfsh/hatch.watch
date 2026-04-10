@@ -584,7 +584,7 @@
       <p>
         <strong>Why named domains only?</strong> The DAP feed includes an <code>(other)</code> aggregate
         bucket that produced an anomalous spike of ~72M visits/day during Jan 4–13, 2026, with no
-        corresponding increase in any named domain — confirmed as a DAP reporting artifact, not real
+        corresponding increase in any named domain. This is most probably a DAP reporting artifact, not real
         traffic (USPS, NIH, IRS, SSA, and other named domains show unchanged visit counts across the
         same period). This bucket is excluded from the baseline line. It does not affect the partisan
         visit figures, which are computed by looking up specific named domains only.
@@ -592,9 +592,9 @@
       <p>
         <strong>Key finding:</strong> Total .gov traffic was essentially unchanged on Nov 13, 2025 —
         the 7-day rolling average moved from ~64.0M to ~64.5M — while partisan site visits dropped
-        ~70% (from ~1.3M to ~442K). Partisan visits fell from approximately 2% of total tracked .gov
-        traffic before Nov 13 to approximately 0.6% after. The overlay makes this contrast visible
-        at a glance: the gray line is flat while the bars drop sharply.
+        ~70% (from ~1.3M to ~442K). Visits impacted by partisan messages fell from approximately 2% 
+        of total tracked .gov traffic before Nov 13 to approximately 0.6% after. The overlay makes 
+        this contrast visible at a glance: the gray line is flat while the bars drop sharply.
       </p>
 
       <h3>Caveats and potential biases in the cumulative estimate</h3>
@@ -1005,8 +1005,8 @@ function renderChart(ts, mode) {
           },
           x: {
             type: 'time',
-            min: '2025-10-12',
-            max: '2026-02-08',
+            min: '2025-10-11',
+            max: '2026-02-09',
             offset: false,
             time: { unit: 'month', displayFormats: { month: 'MMM yyyy' } },
             grid: { display: false },
