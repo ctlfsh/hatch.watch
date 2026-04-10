@@ -417,6 +417,7 @@
     <div id="daily-legend" style="display:none; font-size:0.8rem; color:#666; margin: 0.4rem 0 0 0.25rem; gap:1.25rem; align-items:center;">
       <span><span style="display:inline-block;width:12px;height:12px;background:rgba(192,57,43,0.85);border-radius:2px;margin-right:4px;vertical-align:middle"></span>Snapshot day (measured)</span>
       <span><span style="display:inline-block;width:12px;height:12px;background:rgba(192,57,43,0.30);border-radius:2px;margin-right:4px;vertical-align:middle"></span>Interpolated (estimated)</span>
+      <span><span style="display:inline-block;width:20px;height:2px;background:rgba(150,150,150,0.8);margin-right:4px;vertical-align:middle;position:relative;top:-1px"></span>Total .gov traffic (7-day avg)</span>
     </div>
     <div class="chart-wrap">
       <canvas id="chart"></canvas>
@@ -567,6 +568,33 @@
         were actually classified on that date); light bars are interpolated days where partisan status
         is extrapolated from the surrounding snapshots. The same snapshot-bracketing methodology applies:
         a day is counted only if the site was partisan at both the preceding and following snapshot.
+      </p>
+      <p>
+        The gray line on the Est. Daily chart is the <strong>7-day trailing rolling average</strong> of
+        total named-domain .gov traffic — the current day and the 6 preceding days averaged together,
+        so no future data is incorporated. It provides a stable baseline showing overall government web
+        activity for context. Raw daily totals are available in the tooltip for full transparency.
+      </p>
+      <p>
+        <strong>Why a rolling average?</strong> Raw daily .gov traffic swings approximately 2× between
+        weekdays (~75–85M visits) and weekends (~45–58M visits) due to federal workforce patterns
+        unrelated to partisan content. The 7-day window covers one full weekday/weekend cycle, smoothing
+        this variation to a clean backdrop.
+      </p>
+      <p>
+        <strong>Why named domains only?</strong> The DAP feed includes an <code>(other)</code> aggregate
+        bucket that produced an anomalous spike of ~72M visits/day during Jan 4–13, 2026, with no
+        corresponding increase in any named domain — confirmed as a DAP reporting artifact, not real
+        traffic (USPS, NIH, IRS, SSA, and other named domains show unchanged visit counts across the
+        same period). This bucket is excluded from the baseline line. It does not affect the partisan
+        visit figures, which are computed by looking up specific named domains only.
+      </p>
+      <p>
+        <strong>Key finding:</strong> Total .gov traffic was essentially unchanged on Nov 13, 2025 —
+        the 7-day rolling average moved from ~64.0M to ~64.5M — while partisan site visits dropped
+        ~70% (from ~1.3M to ~442K). Partisan visits fell from approximately 2% of total tracked .gov
+        traffic before Nov 13 to approximately 0.6% after. The overlay makes this contrast visible
+        at a glance: the gray line is flat while the bars drop sharply.
       </p>
 
       <h3>Caveats and potential biases in the cumulative estimate</h3>
@@ -884,8 +912,12 @@ function renderChart(ts, mode) {
       },
     });
   } else if (mode === 'daily') {
-    document.getElementById('chart-note').textContent =
-      'Estimated daily visits to partisan agency sites. Dark bars = snapshot days (sites classified on that date). Light bars = interpolated (partisan status extrapolated from surrounding snapshots). Shaded region: no snapshot data available for Nov 13, 2025 – Jan 29, 2026.';
+    const govPoints = (ts.daily_gov_totals || []).map(e => ({ x: e.date, y: e.rolling_avg_7d }));
+
+    const hasGov = govPoints.length > 0;
+    document.getElementById('chart-note').textContent = hasGov
+      ? 'Estimated daily visits to partisan agency sites. Dark bars = snapshot days (sites classified on that date). Light bars = interpolated (partisan status extrapolated from surrounding snapshots). Gray line = 7-day rolling average of total tracked .gov traffic (named domains only). Partisan visits were ~2% of total .gov traffic before Nov 13 and ~0.6% after. Shaded region: no snapshot data available for Nov 13, 2025 – Jan 29, 2026.'
+      : 'Estimated daily visits to partisan agency sites. Dark bars = snapshot days (sites classified on that date). Light bars = interpolated (partisan status extrapolated from surrounding snapshots). Shaded region: no snapshot data available for Nov 13, 2025 – Jan 29, 2026.';
 
     const points = ts.cumulative_partisan_visits.map(e => ({ x: e.date, y: e.daily }));
 
@@ -896,19 +928,37 @@ function renderChart(ts, mode) {
       SNAPSHOT_DATES.has(p.x) ? 'rgba(150,40,30,0.9)' : 'rgba(150,40,30,0.35)'
     );
 
+    const datasets = [
+      {
+        type: 'bar',
+        label: 'Est. daily partisan visits',
+        data: points,
+        backgroundColor: bgColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+        barPercentage: 0.9,
+        categoryPercentage: 1.0,
+        order: 0,
+      },
+    ];
+    if (hasGov) {
+      datasets.push({
+        type: 'line',
+        label: 'Total .gov traffic (7-day avg)',
+        data: govPoints,
+        borderColor: 'rgba(150,150,150,0.6)',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: false,
+        yAxisID: 'y',
+        order: 1,
+      });
+    }
+
     chartInstance = new Chart(ctx, {
       type: 'bar',
-      data: {
-        datasets: [{
-          label: 'Est. daily partisan visits',
-          data: points,
-          backgroundColor: bgColors,
-          borderColor: borderColors,
-          borderWidth: 1,
-          barPercentage: 0.9,
-          categoryPercentage: 1.0,
-        }],
-      },
+      data: { datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -918,13 +968,23 @@ function renderChart(ts, mode) {
           tooltip: {
             callbacks: {
               label: ctx => {
+                if (ctx.dataset.type === 'line') return null;
                 const dateStr = ctx.raw?.x || '';
                 const isSnap = SNAPSHOT_DATES.has(dateStr);
                 const isRollback = dateStr === '2025-11-13';
                 const tag = isSnap
                   ? (isRollback ? 'snapshot day · shutdown rollback' : 'snapshot day')
                   : 'estimated';
-                return ` ${fmtVisitsFull(ctx.parsed.y)} visits · ${tag}`;
+                return ` ${fmtVisitsFull(ctx.parsed.y)} partisan visits · ${tag}`;
+              },
+              afterBody: ctx => {
+                const dateStr = ctx[0]?.raw?.x || '';
+                const entry = (timeSeriesData.daily_gov_totals || []).find(e => e.date === dateStr);
+                if (!entry) return [];
+                return [
+                  `  Total .gov traffic (today): ~${fmtVisits(entry.total)}`,
+                  `  Total .gov traffic (7d avg): ~${fmtVisits(entry.rolling_avg_7d)}`,
+                ];
               },
             },
           },

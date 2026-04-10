@@ -220,6 +220,51 @@ def build_cumulative(snapshots: list, site_history: dict, traffic: dict) -> dict
     }
 
 
+def build_daily_gov_totals(traffic: dict) -> list:
+    """
+    Compute daily total named-domain .gov traffic and 7-day trailing rolling average
+    for every calendar day Oct 12 – Feb 8.
+
+    Excludes the DAP '(other)' aggregate bucket, which produced an anomalous spike
+    of ~72M visits/day during Jan 4–13 with no corresponding increase in any named
+    domain — confirmed as a DAP reporting artifact.
+
+    Returns a list of {date, total, rolling_avg_7d} dicts sorted by date.
+    """
+    start = datetime.date(2025, 10, 12)
+    end   = datetime.date(2026, 2, 8)
+    dates = []
+    d = start
+    while d <= end:
+        dates.append(str(d))
+        d += datetime.timedelta(days=1)
+
+    totals = []
+    for date_str in dates:
+        day_data = traffic.get("dates", {}).get(date_str, {})
+        if not day_data:
+            continue  # missing from cache — skip silently
+        domains = day_data.get("domains", {})
+        total = sum(v for k, v in domains.items() if k != "(other)")
+        totals.append((date_str, total))
+
+    # 7-day trailing rolling average
+    result = []
+    for i, (date_str, total) in enumerate(totals):
+        window = [t for _, t in totals[max(0, i - 6): i + 1]]
+        avg = round(sum(window) / len(window))
+        result.append({"date": date_str, "total": total, "rolling_avg_7d": avg})
+
+    print(f"  daily_gov_totals: {len(result)} dates")
+    if result:
+        raw_vals = [r["total"] for r in result]
+        avg_vals = [r["rolling_avg_7d"] for r in result]
+        print(f"    raw total range:     {min(raw_vals):,} – {max(raw_vals):,}")
+        print(f"    rolling avg range:   {min(avg_vals):,} – {max(avg_vals):,}")
+
+    return result
+
+
 def build(input_path: Path, out_dir: Path, traffic_path: Path = None):
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -363,6 +408,10 @@ def build(input_path: Path, out_dir: Path, traffic_path: Path = None):
             summary["total_partisan_visits_estimated"] = cum["total"]
             summary["partisan_visits_days_covered"]    = cum["days_covered"]
             summary["partisan_visits_sites_counted"]   = cum["sites_counted"]
+
+        gov_totals = build_daily_gov_totals(traffic)
+        if gov_totals:
+            time_series["daily_gov_totals"] = gov_totals
 
     # Flip tracker — agency sites only, exclude archive
     flips = []
