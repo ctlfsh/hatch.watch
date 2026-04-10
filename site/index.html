@@ -951,7 +951,7 @@ function renderChart(ts, mode) {
         pointRadius: 0,
         tension: 0.3,
         fill: false,
-        yAxisID: 'y',
+        yAxisID: 'y2',
         order: 1,
       });
     }
@@ -1011,6 +1011,11 @@ function renderChart(ts, mode) {
             time: { unit: 'month', displayFormats: { month: 'MMM yyyy' } },
             grid: { display: false },
             ticks: { font: { size: 11 } },
+          },
+          y2: {
+            position: 'right',
+            display: false,
+            grid: { display: false },
           },
         },
       },
